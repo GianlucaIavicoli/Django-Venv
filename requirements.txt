@@ -13,3 +13,4 @@ sqlparse==0.4.4
 tomli==2.0.1
 yapf==0.40.1
 zipp==3.16.2
+environ

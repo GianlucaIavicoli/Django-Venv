@@ -175,3 +175,4 @@ src/cookies
 venv*
 
 todo
+example.settings.py

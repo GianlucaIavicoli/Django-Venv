@@ -6,7 +6,7 @@ from const import *
 
 
 class EditSettings:
-    def __init__(self, settingsPath: str, dbType: Union[str, None]):
+    def __init__(self, settingsPath: str, dbType: Union[str, None], projectName: str):
         """
         Class for modifying a Django project's settings.py file.
 
@@ -15,10 +15,11 @@ class EditSettings:
         Args:
             settingsPath (str): Path to settings.py
             dbType (Union[str, None]): The type of database to use. It can be one of the following values: mysql, postgres or None.
+            projectName (str): Project name
         """
-
         self.settingsPath = settingsPath
         self.dbType = dbType
+        self.projectName = projectName
 
     def parse_file(self) -> ast.Module:
         with open(self.settingsPath, 'r') as f:
@@ -54,128 +55,120 @@ class EditSettings:
         command = f"yapf -i --style='{YAPF_STYLE}' {self.settingsPath}"
         subprocess.run(command, shell=True, check=True)
 
-    def edit_database(self) -> None:
+    # In order:
+    def _add_imports(self) -> None:
+        for module in MODULES_TO_IMPORT:
+            importNode = ast.Import(
+                names=[ast.alias(name=module, asname=None)])
+
+            self.root.body.insert(1, importNode)
+
+    def _add_base_dir(self) -> None:
+        return NotImplementedError
+
+    def _add_root_dir(self) -> None:
+        for node in ast.walk(self.root):
+            if isinstance(node, ast.Assign) and isinstance(node.targets[0], ast.Name) and node.targets[0].id == 'BASE_DIR':
+                baseDirNodeIndex = self.root.body.index(node)
+
+        rootDirNode = ast.parse(ROOT_DIR_LITERAL).body[0]
+        self.root.body.insert(baseDirNodeIndex + 1, rootDirNode)
+
+    def _add_env(self) -> None:
+
+        for node in ast.walk(self.root):
+            if isinstance(node, ast.Assign) and isinstance(node.targets[0], ast.Name) and node.targets[0].id == 'SECRET_KEY':
+                debugNodeIndex = self.root.body.index(node)
+
+        envNode = ast.parse(ENV_LITERAL).body[0]
+        self.root.body.insert(debugNodeIndex, envNode)
+
+        readEnvNode = ast.parse(READ_ENV_LITERAL).body[0]
+        self.root.body.insert(debugNodeIndex + 1, readEnvNode)
+
+    def _add_secret_key(self) -> None:
+        def _save_secret_key(secretKey: str) -> None:
+            with open('.env', 'a') as env:
+                env.write(f"DJANGO_SECRET_KEY='{secretKey}'")
+
+        for node in ast.walk(self.root):
+            if isinstance(node, ast.Assign) and isinstance(node.targets[0], ast.Name) and node.targets[0].id == 'SECRET_KEY':
+                secretKeyNodeToReplace = node
+                secretKeyNodeIndex = self.root.body.index(node)
+
+                secretKeyNode = ast.parse(SECRE_KEY_LITERAL).body[0]
+                secretKey = secretKeyNodeToReplace.value.s
+
+                _save_secret_key(secretKey)
+
+                ast.copy_location(secretKeyNode, secretKeyNodeToReplace)
+                self.root.body.remove(secretKeyNodeToReplace)
+                self.root.body.insert(secretKeyNodeIndex, secretKeyNode)
+
+    def _add_debug(self) -> None:
+        for node in ast.walk(self.root):
+
+            if isinstance(node, ast.Assign) and isinstance(node.targets[0], ast.Name) and node.targets[0].id == 'DEBUG':
+                debugNodeToReplace = node
+                debugNodeIndex = self.root.body.index(node)
+
+                debugNode = ast.parse(DEBUG_LITERAL).body[0]
+
+                ast.copy_location(debugNode, debugNodeToReplace)
+                self.root.body.remove(debugNodeToReplace)
+                self.root.body.insert(debugNodeIndex, debugNode)
+
+    # To implement:
+    def _add_assets_root(self) -> None:
+        return NotImplementedError
+
+    def _add_allowed_hosts(self) -> None:
+        return NotImplementedError
+
+    def _add_csrf_trusted(self) -> None:
+        return NotImplementedError
+
+    def _add_installed_apps(self) -> None:
+        return NotImplementedError
+
+    def _add_middleware(self) -> None:
+        return NotImplementedError
+
+    def _add_template_dir(self) -> None:
+        return NotImplementedError
+
+    def _add_templates(self) -> None:
+        return NotImplementedError
+
+    def _add_database(self) -> None:
         """
         This method modifies the 'DATABASES' dict within the settings.py file to configure database settings
         according to the specified 'dbType'. It supports 'mysql' and 'postgres' database types.
         """
 
         if self.dbType == "mysql":
+            # MySQL = CreateMySQL(self) #TODO
             for node in ast.walk(self.root):
                 if isinstance(node, ast.Assign) and isinstance(node.targets[0], ast.Name) and node.targets[0].id == 'DATABASES':
-                    databaseDictToReplace = node
-                    databaseDictIndex = self.root.body.index(node)
+                    databasesToReplace = node
+                    databasesIndex = self.root.body.index(node)
 
-            getEnvName = ast.Call(
-                func=ast.Attribute(
-                    value=ast.Name(id='os', ctx=ast.Load()),
-                    attr='getenv',
-                    ctx=ast.Load()
-                ),
-                args=[ast.Str('DB_NAME')],
-                keywords=[]
-            )
-            getEnvUser = ast.Call(
-                func=ast.Attribute(
-                    value=ast.Name(id='os', ctx=ast.Load()),
-                    attr='getenv',
-                    ctx=ast.Load()
-                ),
-                args=[ast.Str('MYSQL_USER')],
-                keywords=[]
-            )
-            getEnvPass = ast.Call(
-                func=ast.Attribute(
-                    value=ast.Name(id='os', ctx=ast.Load()),
-                    attr='getenv',
-                    ctx=ast.Load()
-                ),
-                args=[ast.Str('MYSQL_PASSWORD')],
-                keywords=[]
-            )
-            getEnvHost = ast.Call(
-                func=ast.Attribute(
-                    value=ast.Name(id='os', ctx=ast.Load()),
-                    attr='getenv',
-                    ctx=ast.Load()
-                ),
-                args=[ast.Str('MYSQL_HOST')],
-                keywords=[]
-            )
-            getEnvPort = ast.Call(
-                func=ast.Attribute(
-                    value=ast.Name(id='os', ctx=ast.Load()),
-                    attr='getenv',
-                    ctx=ast.Load()
-                ),
-                args=[ast.Str('MYSQL_PORT')],
-                keywords=[]
-            )
+            databasesNode = ast.parse(MYSQL_CONFIG).body[0]
 
-            # Define the entire DATABASES dictionary with os.getenv calls
-            DATABASE_NODE = ast.Assign(
-                targets=[ast.Name(id='DATABASES', ctx=ast.Store())],
-                value=ast.Dict(
-                    keys=[ast.Str('default')],
-                    values=[
-                        ast.Dict(
-                            keys=[ast.Str('ENGINE'), ast.Str('NAME'), ast.Str('USER'), ast.Str(
-                                'PASSWORD'), ast.Str('HOST'), ast.Str('PORT')],
-                            values=[
-                                ast.Str('django.db.backends.mysql'),
-                                getEnvName,
-                                getEnvUser,
-                                getEnvPass,
-                                getEnvHost,
-                                getEnvPort
-                            ]
-                        )
-                    ]
-                )
-            )
-
-            print(ast.dump(DATABASE_NODE, indent=4))
-            ast.copy_location(DATABASE_NODE, databaseDictToReplace)
-            self.root.body.remove(databaseDictToReplace)
-            self.root.body.insert(databaseDictIndex, DATABASE_NODE)
+            ast.copy_location(databasesNode, databasesToReplace)
+            self.root.body.remove(databasesToReplace)
+            self.root.body.insert(databasesIndex, databasesNode)
 
         elif self.dbType == "postgres":
             return NotImplementedError
 
-    def add_imports(self) -> None:
-        for index, module in enumerate(MODULES_TO_IMPORT):
-            importNode = ast.Import(
-                names=[ast.alias(name=module, asname=None)])
-            self.lastLineAdd = index + 2
+    def _add_static_root(self) -> None:
+        return NotImplementedError
 
-            self.root.body.insert(index + 2, importNode)
+    def _add_static_files_dirs(self) -> None:
+        return NotImplementedError
 
-    def add_env(self) -> None:
-        envNode = ast.Assign(
-            targets=[ast.Name(id='env', ctx=ast.Store())],
-            value=ast.Call(
-                func=ast.Attribute(value=ast.Name(id='environ', ctx=ast.Load()),
-                                   attr='Env', ctx=ast.Load()),
-                args=[],
-                keywords=[
-                    ast.keyword(
-                        arg='DEBUG',
-                        value=ast.Tuple(
-                            elts=[ast.Constant(value=bool, kind=None),
-                                  ast.Constant(value=True, kind=None)],
-                            ctx=ast.Load()
-                        )
-                    ),
-                ],
-            ),
-        )
-
-        print(ast.dump(envNode, indent=4))
-
-        ast.copy_location(envNode, self.root)
-        self.root.body.insert(1, envNode)
-
-    def edit_settings(self):
+    def edit(self):
         """    
         Edit the settings.py file by performing various modifications and formatting.
         This method performs the following operations:
@@ -191,12 +184,24 @@ class EditSettings:
         # Parse the settings.py
         self.root = self.parse_file()
 
-        # Various edits
-        if dbType:
-            self.edit_database()
+        # In order:
+        self._add_imports()
+        # self._add_base_dir()
+        self._add_root_dir()
+        self._add_env()
+        self._add_secret_key()
+        self._add_debug()
 
-        self.add_imports()
-        # self.add_env()
+        # self._add_assets_root()
+        # self._add_allowed_hosts()
+        # self._add_csrf_trusted()
+        # self._add_installed_apps()
+        # self._add_middleware()
+        # self._add_template_dir()
+        # self._add_templates()
+        # self._add_database()
+        # self._add_static_root()
+        # self._add_static_files_dirs()
 
         # Save file and make other edits after it
         self.unparse_and_save_file()
@@ -204,12 +209,22 @@ class EditSettings:
         self.add_blank_lines()
         self.format_file()
 
+    def _add_comments(self):
+        """Add comments in settings.py"""
+        raise NotImplementedError
+
+
+class CreateMySQL(EditSettings):
+    """This class will install mysql, setup mysql, create a user with grant, create a db and save the credential here -> '.env' """
+
 
 if __name__ == "__main__":
     try:
         settingsPath = sys.argv[1] if sys.argv[1] else None
         dbType = sys.argv[2] if sys.argv[2] else None
+        projectName = sys.argv[3] if sys.argv[3] else None
     except:
         dbType = None
 
-    EditSettings(settingsPath=settingsPath, dbType=dbType).edit_settings()
+    EditSettings(settingsPath=settingsPath, dbType=dbType,
+                 projectName=projectName).edit()
