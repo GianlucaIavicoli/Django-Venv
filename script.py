@@ -104,7 +104,6 @@ class EditSettings:
                 ast.copy_location(secretKeyNode, secretKeyNodeToReplace)
                 # self.root.body.remove(secretKeyNodeToReplace)
                 # self.root.body.insert(secretKeyNodeIndex, secretKeyNode)
-                print("SECRET_KEY_NOT_SAVED")
 
     def _add_debug(self) -> None:
         for node in ast.walk(self.root):
@@ -146,11 +145,15 @@ class EditSettings:
                 self.root.body.insert(
                     allowedHostsNodeIndex, allowedHostsNode)
 
-    # To implement:
-
     def _add_csrf_trusted(self) -> None:
-        return NotImplementedError
+        for node in ast.walk(self.root):
+            if isinstance(node, ast.Assign) and isinstance(node.targets[0], ast.Name) and node.targets[0].id == 'ALLOWED_HOSTS':
+                allowedHostsNodeIndex = self.root.body.index(node)
 
+        csrfTrustedNode = ast.parse(LITERAL_CSRF_TRUSTED_ORIGINS).body[0]
+        self.root.body.insert(allowedHostsNodeIndex + 1, csrfTrustedNode)
+
+    # To implement:
     def _add_installed_apps(self) -> None:
         return NotImplementedError
 
@@ -220,8 +223,8 @@ class EditSettings:
         self._add_debug()
         self._add_assets_root()
         self._add_allowed_hosts()
+        self._add_csrf_trusted()
 
-        # self._add_csrf_trusted()
         # self._add_installed_apps()
         # self._add_middleware()
         # self._add_template_dir()
