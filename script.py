@@ -57,6 +57,12 @@ class EditSettings:
 
     # In order:
     def _add_imports(self) -> None:
+
+        # Remove the 'from pathlib import Path' which would be useless.
+        for node in ast.walk(self.root):
+            if isinstance(node, ast.ImportFrom):
+                self.root.body.remove(node)
+
         for module in MODULES_TO_IMPORT:
             importNode = ast.Import(
                 names=[ast.alias(name=module, asname=None)])
@@ -64,7 +70,17 @@ class EditSettings:
             self.root.body.insert(1, importNode)
 
     def _add_base_dir(self) -> None:
-        return NotImplementedError
+        for node in ast.walk(self.root):
+
+            if isinstance(node, ast.Assign) and isinstance(node.targets[0], ast.Name) and node.targets[0].id == 'BASE_DIR':
+                baseDirNodeToReplace = node
+                baseDirNodeIndex = self.root.body.index(node)
+
+                baseDirNode = ast.parse(LITERAL_BASE_DIR).body[0]
+
+                ast.copy_location(baseDirNode, baseDirNodeToReplace)
+                self.root.body.remove(baseDirNodeToReplace)
+                self.root.body.insert(baseDirNodeIndex, baseDirNode)
 
     def _add_root_dir(self) -> None:
         for node in ast.walk(self.root):
@@ -258,7 +274,7 @@ class EditSettings:
 
         # In order:
         self._add_imports()
-        # self._add_base_dir()
+        self._add_base_dir()
         self._add_root_dir()
         self._add_env()
         self._add_secret_key()
@@ -268,9 +284,9 @@ class EditSettings:
         self._add_csrf_trusted()
         self._add_installed_apps()
         self._add_middleware()
-
         self._add_template_dir()
         self._add_templates()
+        
         # self._add_database()
         # self._add_static_root()
         # self._add_static_files_dirs()

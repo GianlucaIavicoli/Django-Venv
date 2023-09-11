@@ -5,7 +5,7 @@ MODULES_TO_IMPORT = ['environ', 'os']
 DEFAULT_ASSETS_ROOT = '/static/assets'
 
 # settings.py const
-
+LITERAL_BASE_DIR = "BASE_DIR = os.path.dirname(os.path.dirname(__file__))"
 LITERAL_READ_ENV = "environ.Env.read_env(os.path.join(BASE_DIR, '.env'))"
 LITERAL_ENV = "env = environ.Env(DEBUG=(bool, True))"
 LITERAL_DEBUG = "DEBUG = env('DEBUG')"
