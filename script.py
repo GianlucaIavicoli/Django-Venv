@@ -55,28 +55,87 @@ class EditSettings:
         subprocess.run(command, shell=True, check=True)
 
     def edit_database(self) -> None:
-        """"""
+        """
+        This method modifies the 'DATABASES' dict within the settings.py file to configure database settings
+        according to the specified 'dbType'. It supports 'mysql' and 'postgres' database types.
+        """
+
         if self.dbType == "mysql":
             for node in ast.walk(self.root):
                 if isinstance(node, ast.Assign) and isinstance(node.targets[0], ast.Name) and node.targets[0].id == 'DATABASES':
                     databaseDictToReplace = node
                     databaseDictIndex = self.root.body.index(node)
 
+            getEnvName = ast.Call(
+                func=ast.Attribute(
+                    value=ast.Name(id='os', ctx=ast.Load()),
+                    attr='getenv',
+                    ctx=ast.Load()
+                ),
+                args=[ast.Str('DB_NAME')],
+                keywords=[]
+            )
+            getEnvUser = ast.Call(
+                func=ast.Attribute(
+                    value=ast.Name(id='os', ctx=ast.Load()),
+                    attr='getenv',
+                    ctx=ast.Load()
+                ),
+                args=[ast.Str('MYSQL_USER')],
+                keywords=[]
+            )
+            getEnvPass = ast.Call(
+                func=ast.Attribute(
+                    value=ast.Name(id='os', ctx=ast.Load()),
+                    attr='getenv',
+                    ctx=ast.Load()
+                ),
+                args=[ast.Str('MYSQL_PASSWORD')],
+                keywords=[]
+            )
+            getEnvHost = ast.Call(
+                func=ast.Attribute(
+                    value=ast.Name(id='os', ctx=ast.Load()),
+                    attr='getenv',
+                    ctx=ast.Load()
+                ),
+                args=[ast.Str('MYSQL_HOST')],
+                keywords=[]
+            )
+            getEnvPort = ast.Call(
+                func=ast.Attribute(
+                    value=ast.Name(id='os', ctx=ast.Load()),
+                    attr='getenv',
+                    ctx=ast.Load()
+                ),
+                args=[ast.Str('MYSQL_PORT')],
+                keywords=[]
+            )
+
+            # Define the entire DATABASES dictionary with os.getenv calls
             DATABASE_NODE = ast.Assign(
                 targets=[ast.Name(id='DATABASES', ctx=ast.Store())],
                 value=ast.Dict(
                     keys=[ast.Str('default')],
                     values=[
                         ast.Dict(
-                            keys=[ast.Str(k) for k in MYSQL_CONFIG.keys()],
-                            values=[ast.Str(v) for v in MYSQL_CONFIG.values()]
+                            keys=[ast.Str('ENGINE'), ast.Str('NAME'), ast.Str('USER'), ast.Str(
+                                'PASSWORD'), ast.Str('HOST'), ast.Str('PORT')],
+                            values=[
+                                ast.Str('django.db.backends.mysql'),
+                                getEnvName,
+                                getEnvUser,
+                                getEnvPass,
+                                getEnvHost,
+                                getEnvPort
+                            ]
                         )
                     ]
                 )
             )
 
+            print(ast.dump(DATABASE_NODE, indent=4))
             ast.copy_location(DATABASE_NODE, databaseDictToReplace)
-
             self.root.body.remove(databaseDictToReplace)
             self.root.body.insert(databaseDictIndex, DATABASE_NODE)
 
@@ -84,7 +143,37 @@ class EditSettings:
             return NotImplementedError
 
     def add_imports(self) -> None:
-        return NotImplementedError
+        for index, module in enumerate(MODULES_TO_IMPORT):
+            importNode = ast.Import(
+                names=[ast.alias(name=module, asname=None)])
+            self.lastLineAdd = index + 2
+
+            self.root.body.insert(index + 2, importNode)
+
+    def add_env(self) -> None:
+        envNode = ast.Assign(
+            targets=[ast.Name(id='env', ctx=ast.Store())],
+            value=ast.Call(
+                func=ast.Attribute(value=ast.Name(id='environ', ctx=ast.Load()),
+                                   attr='Env', ctx=ast.Load()),
+                args=[],
+                keywords=[
+                    ast.keyword(
+                        arg='DEBUG',
+                        value=ast.Tuple(
+                            elts=[ast.Constant(value=bool, kind=None),
+                                  ast.Constant(value=True, kind=None)],
+                            ctx=ast.Load()
+                        )
+                    ),
+                ],
+            ),
+        )
+
+        print(ast.dump(envNode, indent=4))
+
+        ast.copy_location(envNode, self.root)
+        self.root.body.insert(1, envNode)
 
     def edit_settings(self):
         """    
@@ -107,6 +196,7 @@ class EditSettings:
             self.edit_database()
 
         self.add_imports()
+        # self.add_env()
 
         # Save file and make other edits after it
         self.unparse_and_save_file()
