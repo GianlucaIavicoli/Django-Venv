@@ -247,7 +247,13 @@ class EditSettings:
             return NotImplementedError
 
     def _add_static_root(self) -> None:
-        return NotImplementedError
+        for node in ast.walk(self.root):
+
+            if isinstance(node, ast.Assign) and isinstance(node.targets[0], ast.Name) and node.targets[0].id == 'STATIC_URL':
+                staticUrlNodeIndex = self.root.body.index(node)
+
+                staticRootNode = ast.parse(LITERAL_STATIC_ROOT).body[0]
+                self.root.body.insert(staticUrlNodeIndex, staticRootNode)
 
     def _add_static_files_dirs(self) -> None:
         return NotImplementedError
@@ -286,9 +292,10 @@ class EditSettings:
         self._add_middleware()
         self._add_template_dir()
         self._add_templates()
-        
+
         # self._add_database()
-        # self._add_static_root()
+
+        self._add_static_root()
         # self._add_static_files_dirs()
 
         # Save file and make other edits after it
