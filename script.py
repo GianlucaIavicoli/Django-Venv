@@ -168,15 +168,45 @@ class EditSettings:
                 self.root.body.insert(
                     installedAppsNodeIndex, installedAppsNode)
 
-    # To implement:
     def _add_middleware(self) -> None:
-        return NotImplementedError
+        for node in ast.walk(self.root):
+
+            if isinstance(node, ast.Assign) and isinstance(node.targets[0], ast.Name) and node.targets[0].id == 'MIDDLEWARE':
+                middlewareNodeToReplace = node
+                middlewaresNodeIndex = self.root.body.index(node)
+
+                middlewareNode = ast.parse(LITERAL_MIDDLEWARE).body[0]
+
+                ast.copy_location(middlewareNode,
+                                  middlewareNodeToReplace)
+                self.root.body.remove(middlewareNodeToReplace)
+                self.root.body.insert(
+                    middlewaresNodeIndex, middlewareNode)
 
     def _add_template_dir(self) -> None:
-        return NotImplementedError
+        for node in ast.walk(self.root):
+            if isinstance(node, ast.Assign) and isinstance(node.targets[0], ast.Name) and node.targets[0].id == 'ROOT_URLCONF':
+                rootUrlIndex = self.root.body.index(node)
+
+        templateDirNode = ast.parse(LITERAL_TEMPLATE_DIR).body[0]
+        self.root.body.insert(rootUrlIndex + 1, templateDirNode)
 
     def _add_templates(self) -> None:
-        return NotImplementedError
+        for node in ast.walk(self.root):
+
+            if isinstance(node, ast.Assign) and isinstance(node.targets[0], ast.Name) and node.targets[0].id == 'TEMPLATES':
+                templatesNodeToReplace = node
+                templatesNodeIndex = self.root.body.index(node)
+
+                templatesNode = ast.parse(LITERAL_TEMPLATES).body[0]
+
+                ast.copy_location(templatesNode,
+                                  templatesNodeToReplace)
+                self.root.body.remove(templatesNodeToReplace)
+                self.root.body.insert(
+                    templatesNodeIndex, templatesNode)
+
+    # To implement:
 
     def _add_database(self) -> None:
         """
@@ -237,10 +267,10 @@ class EditSettings:
         self._add_allowed_hosts()
         self._add_csrf_trusted()
         self._add_installed_apps()
-
         self._add_middleware()
-        # self._add_template_dir()
-        # self._add_templates()
+
+        self._add_template_dir()
+        self._add_templates()
         # self._add_database()
         # self._add_static_root()
         # self._add_static_files_dirs()

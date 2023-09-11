@@ -17,3 +17,6 @@ LITERAL_ALLOWED_HOSTS = "ALLOWED_HOSTS = ['localhost', '127.0.0.1', env('SERVER'
 LITERAL_CSRF_TRUSTED_ORIGINS = "CSRF_TRUSTED_ORIGINS = ['http://127.0.0.1', 'https://' + env('SERVER', default='127.0.0.1')]"
 
 LITERAL_INSTALLED_APPS = "INSTALLED_APPS = ['django.contrib.admin','django.contrib.auth', 'django.contrib.contenttypes', 'django.contrib.sessions', 'django.contrib.messages','django.contrib.staticfiles','django_htmx','apps.home' ]"
+LITERAL_MIDDLEWARE = "MIDDLEWARE = ['django.middleware.security.SecurityMiddleware', 'django.contrib.sessions.middleware.SessionMiddleware', 'django.middleware.common.CommonMiddleware', 'django_htmx.middleware.HtmxMiddleware', 'django.middleware.csrf.CsrfViewMiddleware', 'django.contrib.auth.middleware.AuthenticationMiddleware', 'django.contrib.messages.middleware.MessageMiddleware', 'django.middleware.clickjacking.XFrameOptionsMiddleware']"
+LITERAL_TEMPLATE_DIR = "TEMPLATE_DIR = os.path.join(ROOT_DIR, 'apps/templates')"
+LITERAL_TEMPLATES = "TEMPLATES = [{'BACKEND': 'django.template.backends.django.DjangoTemplates', 'DIRS': [TEMPLATE_DIR], 'APP_DIRS': True, 'OPTIONS': {'context_processors': ['django.template.context_processors.debug','django.template.context_processors.request','django.contrib.auth.context_processors.auth','django.contrib.messages.context_processors.messages']}}]"
