@@ -2,13 +2,15 @@
 YAPF_STYLE = "{SPLIT_ALL_COMMA_SEPARATED_VALUES: 1, SPACES_BEFORE_COMMENT: 2, SPLIT_ALL_COMMA_SEPARATED_VALUES: 1}"
 
 MODULES_TO_IMPORT = ['environ', 'os']
-
+DEFAULT_ASSETS_ROOT = '/static/assets'
 
 # settings.py const
 
-READ_ENV_LITERAL = "environ.Env.read_env(os.path.join(BASE_DIR, '.env'))"
-ENV_LITERAL = "env = environ.Env(DEBUG=(bool, True))"
-DEBUG_LITERAL = "DEBUG = env('DEBUG')"
-ROOT_DIR_LITERAL = "ROOT_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))"
-SECRE_KEY_LITERAL = "SECRET_KEY = env('SECRET_KEY')"
-MYSQL_CONFIG = "DATABASES = {'default': {'ENGINE': 'django.db.backends.mysql', 'NAME': os.getenv('DB_NAME'), 'USER': os.getenv('MYSQL_USER'), 'PASSWORD': os.getenv('MYSQL_PASSWORD'), 'HOST': os.getenv('MYSQL_HOST', 'localhost'), 'PORT': os.getenv('MYSQL_PORT', 3306)} }"
+LITERAL_READ_ENV = "environ.Env.read_env(os.path.join(BASE_DIR, '.env'))"
+LITERAL_ENV = "env = environ.Env(DEBUG=(bool, True))"
+LITERAL_DEBUG = "DEBUG = env('DEBUG')"
+LITERAL_ROOT_DIR = "ROOT_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))"
+LITERAL_SECRET_KEY = "SECRET_KEY = env('SECRET_KEY')"
+LITERAL_MYSQL = "DATABASES = {'default': {'ENGINE': 'django.db.backends.mysql', 'NAME': os.getenv('DB_NAME'), 'USER': os.getenv('MYSQL_USER'), 'PASSWORD': os.getenv('MYSQL_PASSWORD'), 'HOST': os.getenv('MYSQL_HOST', 'localhost'), 'PORT': os.getenv('MYSQL_PORT', 3306)} }"
+LITERAL_ASSETS_ROOT = "ASSETS_ROOT = os.getenv('ASSETS_ROOT')"
+LITERAL_ALLOWED_HOSTS = "ALLOWED_HOSTS = ['localhost', '127.0.0.1', env('SERVER', default='127.0.0.1')]"

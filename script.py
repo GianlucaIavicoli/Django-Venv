@@ -71,7 +71,7 @@ class EditSettings:
             if isinstance(node, ast.Assign) and isinstance(node.targets[0], ast.Name) and node.targets[0].id == 'BASE_DIR':
                 baseDirNodeIndex = self.root.body.index(node)
 
-        rootDirNode = ast.parse(ROOT_DIR_LITERAL).body[0]
+        rootDirNode = ast.parse(LITERAL_ROOT_DIR).body[0]
         self.root.body.insert(baseDirNodeIndex + 1, rootDirNode)
 
     def _add_env(self) -> None:
@@ -80,30 +80,31 @@ class EditSettings:
             if isinstance(node, ast.Assign) and isinstance(node.targets[0], ast.Name) and node.targets[0].id == 'SECRET_KEY':
                 debugNodeIndex = self.root.body.index(node)
 
-        envNode = ast.parse(ENV_LITERAL).body[0]
+        envNode = ast.parse(LITERAL_ENV).body[0]
         self.root.body.insert(debugNodeIndex, envNode)
 
-        readEnvNode = ast.parse(READ_ENV_LITERAL).body[0]
+        readEnvNode = ast.parse(LITERAL_READ_ENV).body[0]
         self.root.body.insert(debugNodeIndex + 1, readEnvNode)
 
     def _add_secret_key(self) -> None:
         def _save_secret_key(secretKey: str) -> None:
             with open('.env', 'a') as env:
-                env.write(f"DJANGO_SECRET_KEY='{secretKey}'")
+                env.write(f"DJANGO_SECRET_KEY='{secretKey}'\n\n")
 
         for node in ast.walk(self.root):
             if isinstance(node, ast.Assign) and isinstance(node.targets[0], ast.Name) and node.targets[0].id == 'SECRET_KEY':
                 secretKeyNodeToReplace = node
                 secretKeyNodeIndex = self.root.body.index(node)
 
-                secretKeyNode = ast.parse(SECRE_KEY_LITERAL).body[0]
+                secretKeyNode = ast.parse(LITERAL_SECRET_KEY).body[0]
                 secretKey = secretKeyNodeToReplace.value.s
 
                 _save_secret_key(secretKey)
 
                 ast.copy_location(secretKeyNode, secretKeyNodeToReplace)
-                self.root.body.remove(secretKeyNodeToReplace)
-                self.root.body.insert(secretKeyNodeIndex, secretKeyNode)
+                # self.root.body.remove(secretKeyNodeToReplace)
+                # self.root.body.insert(secretKeyNodeIndex, secretKeyNode)
+                print("SECRET_KEY_NOT_SAVED")
 
     def _add_debug(self) -> None:
         for node in ast.walk(self.root):
@@ -112,18 +113,40 @@ class EditSettings:
                 debugNodeToReplace = node
                 debugNodeIndex = self.root.body.index(node)
 
-                debugNode = ast.parse(DEBUG_LITERAL).body[0]
+                debugNode = ast.parse(LITERAL_DEBUG).body[0]
 
                 ast.copy_location(debugNode, debugNodeToReplace)
                 self.root.body.remove(debugNodeToReplace)
                 self.root.body.insert(debugNodeIndex, debugNode)
 
-    # To implement:
     def _add_assets_root(self) -> None:
-        return NotImplementedError
+        def add_inside_env() -> None:
+            with open('.env', 'a') as env:
+                env.write(f"ASSETS_ROOT='{DEFAULT_ASSETS_ROOT}'\n\n")
+
+        for node in ast.walk(self.root):
+            if isinstance(node, ast.Assign) and isinstance(node.targets[0], ast.Name) and node.targets[0].id == 'DEBUG':
+                debugNodeIndex = self.root.body.index(node)
+
+        add_inside_env()
+        assetsRootNode = ast.parse(LITERAL_ASSETS_ROOT).body[0]
+        self.root.body.insert(debugNodeIndex + 1, assetsRootNode)
 
     def _add_allowed_hosts(self) -> None:
-        return NotImplementedError
+        for node in ast.walk(self.root):
+
+            if isinstance(node, ast.Assign) and isinstance(node.targets[0], ast.Name) and node.targets[0].id == 'ALLOWED_HOSTS':
+                allowedHostsNodeToReplace = node
+                allowedHostsNodeIndex = self.root.body.index(node)
+
+                allowedHostsNode = ast.parse(LITERAL_ALLOWED_HOSTS).body[0]
+
+                ast.copy_location(allowedHostsNode, allowedHostsNodeToReplace)
+                self.root.body.remove(allowedHostsNodeToReplace)
+                self.root.body.insert(
+                    allowedHostsNodeIndex, allowedHostsNode)
+
+    # To implement:
 
     def _add_csrf_trusted(self) -> None:
         return NotImplementedError
@@ -153,7 +176,7 @@ class EditSettings:
                     databasesToReplace = node
                     databasesIndex = self.root.body.index(node)
 
-            databasesNode = ast.parse(MYSQL_CONFIG).body[0]
+            databasesNode = ast.parse(LITERAL_MYSQL).body[0]
 
             ast.copy_location(databasesNode, databasesToReplace)
             self.root.body.remove(databasesToReplace)
@@ -167,6 +190,10 @@ class EditSettings:
 
     def _add_static_files_dirs(self) -> None:
         return NotImplementedError
+
+    def _add_comments(self):
+        """Add comments in settings.py"""
+        raise NotImplementedError
 
     def edit(self):
         """    
@@ -191,9 +218,9 @@ class EditSettings:
         self._add_env()
         self._add_secret_key()
         self._add_debug()
+        self._add_assets_root()
+        self._add_allowed_hosts()
 
-        # self._add_assets_root()
-        # self._add_allowed_hosts()
         # self._add_csrf_trusted()
         # self._add_installed_apps()
         # self._add_middleware()
@@ -208,10 +235,6 @@ class EditSettings:
 
         self.add_blank_lines()
         self.format_file()
-
-    def _add_comments(self):
-        """Add comments in settings.py"""
-        raise NotImplementedError
 
 
 class CreateMySQL(EditSettings):
