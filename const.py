@@ -21,3 +21,4 @@ LITERAL_MIDDLEWARE = "MIDDLEWARE = ['django.middleware.security.SecurityMiddlewa
 LITERAL_TEMPLATE_DIR = "TEMPLATE_DIR = os.path.join(ROOT_DIR, 'apps/templates')"
 LITERAL_TEMPLATES = "TEMPLATES = [{'BACKEND': 'django.template.backends.django.DjangoTemplates', 'DIRS': [TEMPLATE_DIR], 'APP_DIRS': True, 'OPTIONS': {'context_processors': ['django.template.context_processors.debug','django.template.context_processors.request','django.contrib.auth.context_processors.auth','django.contrib.messages.context_processors.messages']}}]"
 LITERAL_STATIC_ROOT = "STATIC_ROOT = os.path.join(ROOT_DIR, 'staticfiles')"
+LITERAL_STATICFILES_DIRS = "STATICFILES_DIRS = (os.path.join(ROOT_DIR, 'apps/static'))"

@@ -256,7 +256,15 @@ class EditSettings:
                 self.root.body.insert(staticUrlNodeIndex, staticRootNode)
 
     def _add_static_files_dirs(self) -> None:
-        return NotImplementedError
+        for node in ast.walk(self.root):
+
+            if isinstance(node, ast.Assign) and isinstance(node.targets[0], ast.Name) and node.targets[0].id == 'STATIC_URL':
+                staticFilesDirIndex = self.root.body.index(node)
+
+                staticFilesDirNode = ast.parse(
+                    LITERAL_STATICFILES_DIRS).body[0]
+                self.root.body.insert(
+                    staticFilesDirIndex + 1, staticFilesDirNode)
 
     def _add_comments(self):
         """Add comments in settings.py"""
@@ -296,7 +304,7 @@ class EditSettings:
         # self._add_database()
 
         self._add_static_root()
-        # self._add_static_files_dirs()
+        self._add_static_files_dirs()
 
         # Save file and make other edits after it
         self.unparse_and_save_file()
