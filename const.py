@@ -15,3 +15,5 @@ LITERAL_MYSQL = "DATABASES = {'default': {'ENGINE': 'django.db.backends.mysql', 
 LITERAL_ASSETS_ROOT = "ASSETS_ROOT = os.getenv('ASSETS_ROOT')"
 LITERAL_ALLOWED_HOSTS = "ALLOWED_HOSTS = ['localhost', '127.0.0.1', env('SERVER', default='127.0.0.1')]"
 LITERAL_CSRF_TRUSTED_ORIGINS = "CSRF_TRUSTED_ORIGINS = ['http://127.0.0.1', 'https://' + env('SERVER', default='127.0.0.1')]"
+
+LITERAL_INSTALLED_APPS = "INSTALLED_APPS = ['django.contrib.admin','django.contrib.auth', 'django.contrib.contenttypes', 'django.contrib.sessions', 'django.contrib.messages','django.contrib.staticfiles','django_htmx','apps.home' ]"
