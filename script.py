@@ -1,6 +1,7 @@
 import ast
 import subprocess
 import sys
+import os
 from time import sleep
 from typing import Union
 from const import *
@@ -57,6 +58,7 @@ class EditSettings:
         subprocess.run(command, shell=True, check=True)
 
     # In order:
+
     def _add_imports(self) -> None:
 
         # Remove the 'from pathlib import Path' which would be useless.
@@ -321,11 +323,49 @@ class EditSettings:
         self._add_static_root()
         self._add_static_files_dirs()
 
+        setup_extra_dirs()
+
         # Save file and make other edits after it
         self.unparse_and_save_file()
 
         self.add_blank_lines()
         self.format_file()
+
+def setup_extra_dirs() -> None:
+    """
+    Create necessary directories and files for the project's static, assets and templates.
+
+    This method creates the following directories and files:
+
+    - 'staticfiles': for root static files.
+    - 'apps/templates/layouts': for template layout files.
+    - 'apps/templates/layouts/base.html': an empty base HTML template file.
+    - 'apps/static/assets': directory for the apps static files.
+    - 'apps/static/assets/css': directory for CSS files.
+    - 'apps/static/assets/js': directory for JavaScript files.
+    - 'apps/static/assets/img': directory for image files.
+
+    If any of these directories or files already exist, they will not be recreated.
+
+    Returns:
+        None
+    """
+
+    # Static root in settings.py
+    os.makedirs('staticfiles',  exist_ok=True)
+
+    # Templates dir
+    os.makedirs('apps/templates/layouts', exist_ok=True)
+
+    # create a base.html file
+    with open('apps/templates/layouts/base.html', 'w') as f:
+        f.write("<!DOCTYPE html>\n")
+
+    # Assets dirs
+    os.makedirs('apps/static/assets', exist_ok=True)
+    os.makedirs('apps/static/assets/css',  exist_ok=True)
+    os.makedirs('apps/static/assets/js',  exist_ok=True)
+    os.makedirs('apps/static/assets/img',  exist_ok=True)
 
 
 def setup_mysql(projectName: str) -> bool:
@@ -414,6 +454,5 @@ if __name__ == "__main__":
     dbType = sys.argv[2] if sys.argv[2] else None
     projectName = sys.argv[3] if sys.argv[3] else None
 
-    # setup_mysql(projectName, dbType)
     EditSettings(settingsPath=settingsPath, dbType=dbType,
                  projectName=projectName).edit()
