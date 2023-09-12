@@ -14,10 +14,10 @@ setup_venv() {
         exit 1
     fi
     
-    #touch .env
+    touch .env
     
-    #pip install --upgrade pip
-    #pip3 install -r requirements.txt
+    pip install --upgrade pip
+    pip3 install -r requirements.txt
 }
 
 
@@ -25,7 +25,7 @@ setup_venv
 
 django-admin startproject root .
 
-python3 script.py root/settings.py mysql $projectName
+python3 script.py root/settings.py postgre $projectName
 
 if [ "$activated" = true ]; then
     deactivate

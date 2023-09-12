@@ -24,16 +24,49 @@ setup_mysql() {
         
         echo "MySQL user -> '$MYSQL_USER' created succesfully."
         echo "MySQL database -> '$CONTAINER_NAME' created succesfully."
-
+        
     else
         exit "MySQL container is not running."
     fi
 }
 
 
-setup_postgres() {
-    exit 1
+setup_postgresql() {
+    echo "Starting PostgreSQL Docker container...."
+    
+    containerId=$(docker run -d --name $CONTAINER_NAME -p $POSTGRESQL_HOST:$POSTGRESQL_PORT:5432 -e POSTGRES_PASSWORD=$POSTGRESQL_PASSWORD postgres:latest)
+    
+    sleep 10
+    echo "PostgreSQL Docker container started with id: $containerId"
+    
+    # Check if the PostgreSQL container is running
+    if docker ps | grep "$CONTAINER_NAME" &>/dev/null; then
+        
+        QUERIES=("CREATE DATABASE $CONTAINER_NAME;"
+            "CREATE USER $POSTGRESQL_USER WITH ENCRYPTED PASSWORD '$POSTGRESQL_PASSWORD';"
+            "ALTER ROLE $POSTGRESQL_USER SET client_encoding TO 'utf8';"
+            "ALTER ROLE $POSTGRESQL_USER SET default_transaction_isolation TO 'read committed';"
+            "ALTER ROLE $POSTGRESQL_USER SET timezone TO 'UTC';"
+            "GRANT CREATE, TEMP, CONNECT ON DATABASE $CONTAINER_NAME TO $POSTGRESQL_USER;"
+        )
+        
+        
+        for query in "${QUERIES[@]}"; do
+            docker exec -it $CONTAINER_NAME psql -U postgres -c "$query"
+        done
+        
+        # Grant for public
+        docker exec -it $CONTAINER_NAME psql -U postgres $CONTAINER_NAME -c "GRANT ALL ON SCHEMA public TO $POSTGRESQL_USER;"
+        
+        echo "PostgreSQL user -> '$POSTGRESQL_USER' created successfully."
+        echo "PostgreSQL database -> '$CONTAINER_NAME' created successfully."
+        
+    else
+        echo "PostgreSQL container is not running."
+        exit 1
+    fi
 }
+
 
 setup_cassandra() {
     exit 1
@@ -49,8 +82,8 @@ check_docker() {
         if [ "$DATABASE_TYPE" == 'mysql' ]; then
             setup_mysql
             
-            elif [ "$DATABASE_TYPE" == 'postgres' ]; then
-            setup_postgres
+            elif [ "$DATABASE_TYPE" == 'postgre' ]; then
+            setup_postgresql
             
             elif [ "$DATABASE_TYPE" == 'cassandra' ]; then
             setup_cassandra

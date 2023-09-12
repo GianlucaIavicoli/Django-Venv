@@ -21,6 +21,14 @@ MYSQL_PORT = 3336
 MYSQL_USER = 'test'
 MYSQL_PASSWORD = generate_password()
 
+# Default PostgreSQL:
+
+POSTGRESQL_ROOT_PASSWORD = generate_password()
+POSTGRESQL_HOST = '127.0.0.1'
+POSTGRESQL_PORT = 5434
+POSTGRESQL_USER = 'test'
+POSTGRESQL_PASSWORD = generate_password()
+
 
 # settings.py const
 LITERAL_BASE_DIR = "BASE_DIR = os.path.dirname(os.path.dirname(__file__))"
@@ -29,7 +37,8 @@ LITERAL_ENV = "env = environ.Env(DEBUG=(bool, True))"
 LITERAL_DEBUG = "DEBUG = env('DEBUG')"
 LITERAL_ROOT_DIR = "ROOT_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))"
 LITERAL_SECRET_KEY = "SECRET_KEY = env('SECRET_KEY')"
-LITERAL_MYSQL = "DATABASES = {'default': {'ENGINE': 'django.db.backends.mysql', 'NAME': os.getenv('DB_NAME'), 'USER': os.getenv('MYSQL_USER'), 'PASSWORD': os.getenv('MYSQL_PASSWORD'), 'HOST': os.getenv('MYSQL_HOST', 'localhost'), 'PORT': os.getenv('MYSQL_PORT', 3306)} }"
+LITERAL_MYSQL = "DATABASES = {'default': {'ENGINE': 'django.db.backends.mysql', 'NAME': os.getenv('MYSQL_NAME'), 'USER': os.getenv('MYSQL_USER'), 'PASSWORD': os.getenv('MYSQL_PASSWORD'), 'HOST': os.getenv('MYSQL_HOST', 'localhost'), 'PORT': os.getenv('MYSQL_PORT')} }"
+LITERAL_POSTGRESQL = "DATABASES = {'default': {'ENGINE': 'django.db.backends.postgresql', 'NAME': os.getenv('POSTGRESQL_NAME'), 'USER': os.getenv('POSTGRESQL_USER'), 'PASSWORD': os.getenv('POSTGRESQL_PASSWORD'), 'HOST': os.getenv('POSTGRESQL_HOST', 'localhost'), 'PORT': os.getenv('POSTGRESQL_PORT')} }"
 LITERAL_ASSETS_ROOT = "ASSETS_ROOT = os.getenv('ASSETS_ROOT')"
 LITERAL_ALLOWED_HOSTS = "ALLOWED_HOSTS = ['localhost', '127.0.0.1', env('SERVER', default='127.0.0.1')]"
 LITERAL_CSRF_TRUSTED_ORIGINS = "CSRF_TRUSTED_ORIGINS = ['http://127.0.0.1', 'https://' + env('SERVER', default='127.0.0.1')]"

@@ -1,7 +1,6 @@
 import ast
 import subprocess
 import sys
-import docker
 from time import sleep
 from typing import Union
 from const import *
@@ -16,7 +15,7 @@ class EditSettings:
 
         Args:
             settingsPath (str): Path to settings.py
-            dbType (Union[str, None]): The type of database to use. It can be one of the following values: mysql, postgres or None.
+            dbType (Union[str, None]): The type of database to use. It can be one of the following values: mysql, postgre or None.
             projectName (str): Project name
         """
         self.settingsPath = settingsPath
@@ -247,8 +246,21 @@ class EditSettings:
                 print(
                     f"Couldn't create the Database or the docker")
 
-        elif self.dbType == "postgres":
-            return NotImplementedError
+        elif self.dbType == "postgre":
+            if setup_postgre(self.projectName):
+                for node in ast.walk(self.root):
+                    if isinstance(node, ast.Assign) and isinstance(node.targets[0], ast.Name) and node.targets[0].id == 'DATABASES':
+                        databasesToReplace = node
+                        databasesIndex = self.root.body.index(node)
+
+                databasesNode = ast.parse(LITERAL_POSTGRESQL).body[0]
+
+                ast.copy_location(databasesNode, databasesToReplace)
+                self.root.body.remove(databasesToReplace)
+                self.root.body.insert(databasesIndex, databasesNode)
+            else:
+                print(
+                    f"Couldn't create the Database or the docker")
 
     def _add_static_root(self) -> None:
         for node in ast.walk(self.root):
@@ -342,11 +354,53 @@ def setup_mysql(projectName: str) -> bool:
             command, shell=True, check=True, start_new_session=True, env=envVariables)
 
         with open('.env', 'a') as env:
+            env.write(f"MYSQL_NAME='{projectName}'\n")
             env.write(f"MYSQL_HOST='{MYSQL_HOST}'\n")
             env.write(f"MYSQL_PORT='{MYSQL_PORT}'\n")
             env.write(f"MYSQL_USER='{MYSQL_USER}'\n")
             env.write(f"MYSQL_PASSWORD='{MYSQL_PASSWORD}'\n")
             env.write(f"MYSQL_ROOT_PASSWORD='{MYSQL_ROOT_PASSWORD}'\n\n")
+
+        return True
+
+    except Exception as e:
+        print(f"{e=}")
+        return False
+
+
+def setup_postgre(projectName: str) -> bool:
+    """
+    This function installs MySQL, sets up MySQL, creates a user with privileges, creates a database, and saves the credentials to the '.env' file. 
+
+    Args:
+        projectName (str): Project name
+
+    Returns:
+        bool: True if docker started, user created with grant and saved credentials in the 
+    """
+    try:
+        envVariables = {
+            'CONTAINER_NAME': f"{projectName}",
+            'DATABASE_TYPE': "postgre",
+            'POSTGRESQL_HOST': f"{POSTGRESQL_HOST}",
+            'POSTGRESQL_PORT': f"{POSTGRESQL_PORT}",
+            'POSTGRESQL_USER': f"{POSTGRESQL_USER}",
+            'POSTGRESQL_PASSWORD': f"{POSTGRESQL_PASSWORD}",
+            'POSTGRESQL_ROOT_PASSWORD': f"{POSTGRESQL_ROOT_PASSWORD}"
+        }
+
+        command = f"./databases.sh"
+        subprocess.run(
+            command, shell=True, check=True, start_new_session=True, env=envVariables)
+
+        with open('.env', 'a') as env:
+            env.write(f"POSTGRESQL_NAME='{projectName}'\n")
+            env.write(f"POSTGRESQL_HOST='{POSTGRESQL_HOST}'\n")
+            env.write(f"POSTGRESQL_PORT='{POSTGRESQL_PORT}'\n")
+            env.write(f"POSTGRESQL_USER='{POSTGRESQL_USER}'\n")
+            env.write(f"POSTGRESQL_PASSWORD='{POSTGRESQL_PASSWORD}'\n")
+            env.write(
+                f"POSTGRESQL_ROOT_PASSWORD='{POSTGRESQL_ROOT_PASSWORD}'\n\n")
 
         return True
 
