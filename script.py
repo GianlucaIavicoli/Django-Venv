@@ -1,6 +1,8 @@
 import ast
 import subprocess
 import sys
+import docker
+from time import sleep
 from typing import Union
 from const import *
 
@@ -222,8 +224,6 @@ class EditSettings:
                 self.root.body.insert(
                     templatesNodeIndex, templatesNode)
 
-    # To implement:
-
     def _add_database(self) -> None:
         """
         This method modifies the 'DATABASES' dict within the settings.py file to configure database settings
@@ -231,17 +231,21 @@ class EditSettings:
         """
 
         if self.dbType == "mysql":
-            # MySQL = CreateMySQL(self) #TODO
-            for node in ast.walk(self.root):
-                if isinstance(node, ast.Assign) and isinstance(node.targets[0], ast.Name) and node.targets[0].id == 'DATABASES':
-                    databasesToReplace = node
-                    databasesIndex = self.root.body.index(node)
+            # If it creates the db, and the user with grant
+            if setup_mysql(self.projectName):
+                for node in ast.walk(self.root):
+                    if isinstance(node, ast.Assign) and isinstance(node.targets[0], ast.Name) and node.targets[0].id == 'DATABASES':
+                        databasesToReplace = node
+                        databasesIndex = self.root.body.index(node)
 
-            databasesNode = ast.parse(LITERAL_MYSQL).body[0]
+                databasesNode = ast.parse(LITERAL_MYSQL).body[0]
 
-            ast.copy_location(databasesNode, databasesToReplace)
-            self.root.body.remove(databasesToReplace)
-            self.root.body.insert(databasesIndex, databasesNode)
+                ast.copy_location(databasesNode, databasesToReplace)
+                self.root.body.remove(databasesToReplace)
+                self.root.body.insert(databasesIndex, databasesNode)
+            else:
+                print(
+                    f"Couldn't create the Database or the docker")
 
         elif self.dbType == "postgres":
             return NotImplementedError
@@ -270,6 +274,7 @@ class EditSettings:
         """Add comments in settings.py"""
         raise NotImplementedError
 
+    # Start:
     def edit(self):
         """    
         Edit the settings.py file by performing various modifications and formatting.
@@ -300,9 +305,7 @@ class EditSettings:
         self._add_middleware()
         self._add_template_dir()
         self._add_templates()
-
-        # self._add_database()
-
+        self._add_database()
         self._add_static_root()
         self._add_static_files_dirs()
 
@@ -313,17 +316,50 @@ class EditSettings:
         self.format_file()
 
 
-class CreateMySQL(EditSettings):
-    """This class will install mysql, setup mysql, create a user with grant, create a db and save the credential here -> '.env' """
+def setup_mysql(projectName: str) -> bool:
+    """
+    This function installs MySQL, sets up MySQL, creates a user with privileges, creates a database, and saves the credentials to the '.env' file. 
+
+    Args:
+        projectName (str): Project name
+
+    Returns:
+        bool: True if docker started, user created with grant and saved credentials in the 
+    """
+    try:
+        envVariables = {
+            'CONTAINER_NAME': f"{projectName}",
+            'DATABASE_TYPE': "mysql",
+            'MYSQL_HOST': f"{MYSQL_HOST}",
+            'MYSQL_PORT': f"{MYSQL_PORT}",
+            'MYSQL_USER': f"{MYSQL_USER}",
+            'MYSQL_PASSWORD': f"{MYSQL_PASSWORD}",
+            'MYSQL_ROOT_PASSWORD': f"{MYSQL_ROOT_PASSWORD}"
+        }
+
+        command = f"./databases.sh"
+        subprocess.run(
+            command, shell=True, check=True, start_new_session=True, env=envVariables)
+
+        with open('.env', 'a') as env:
+            env.write(f"MYSQL_HOST='{MYSQL_HOST}'\n")
+            env.write(f"MYSQL_PORT='{MYSQL_PORT}'\n")
+            env.write(f"MYSQL_USER='{MYSQL_USER}'\n")
+            env.write(f"MYSQL_PASSWORD='{MYSQL_PASSWORD}'\n")
+            env.write(f"MYSQL_ROOT_PASSWORD='{MYSQL_ROOT_PASSWORD}'\n\n")
+
+        return True
+
+    except Exception as e:
+        print(f"{e=}")
+        return False
 
 
 if __name__ == "__main__":
-    try:
-        settingsPath = sys.argv[1] if sys.argv[1] else None
-        dbType = sys.argv[2] if sys.argv[2] else None
-        projectName = sys.argv[3] if sys.argv[3] else None
-    except:
-        dbType = None
+    settingsPath = sys.argv[1] if sys.argv[1] else None
+    dbType = sys.argv[2] if sys.argv[2] else None
+    projectName = sys.argv[3] if sys.argv[3] else None
 
+    # setup_mysql(projectName, dbType)
     EditSettings(settingsPath=settingsPath, dbType=dbType,
                  projectName=projectName).edit()

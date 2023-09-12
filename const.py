@@ -1,8 +1,26 @@
+import string
+import secrets
+
+
+def generate_password():
+    characters = string.ascii_letters + string.digits
+    password = ''.join(secrets.choice(characters) for _ in range(12))
+    return password
+
 
 YAPF_STYLE = "{SPLIT_ALL_COMMA_SEPARATED_VALUES: 1, SPACES_BEFORE_COMMENT: 2, SPLIT_ALL_COMMA_SEPARATED_VALUES: 1}"
 
 MODULES_TO_IMPORT = ['environ', 'os']
 DEFAULT_ASSETS_ROOT = '/static/assets'
+
+# Default MySQL:
+
+MYSQL_ROOT_PASSWORD = generate_password()
+MYSQL_HOST = '127.0.0.1'
+MYSQL_PORT = 3336
+MYSQL_USER = 'test'
+MYSQL_PASSWORD = generate_password()
+
 
 # settings.py const
 LITERAL_BASE_DIR = "BASE_DIR = os.path.dirname(os.path.dirname(__file__))"

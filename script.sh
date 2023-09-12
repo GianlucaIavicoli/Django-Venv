@@ -14,10 +14,10 @@ setup_venv() {
         exit 1
     fi
     
-    touch .env
+    #touch .env
     
-    pip install --upgrade pip
-    pip3 install -r requirements.txt
+    #pip install --upgrade pip
+    #pip3 install -r requirements.txt
 }
 
 
