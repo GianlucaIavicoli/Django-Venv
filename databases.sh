@@ -1,13 +1,21 @@
 #!/bin/bash
 
+logger() {
+    python3 logger.py "$1" "$2"
+}
 
 setup_mysql() {
-    echo "Starting MySQL docker...."
+    logger "info" "Starting MySQL Docker container...."
     
     containerId=$(docker run -d --name $CONTAINER_NAME -p $MYSQL_HOST:$MYSQL_PORT:3306 -e MYSQL_ROOT_PASSWORD=$MYSQL_ROOT_PASSWORD mysql:latest)
     
-    sleep 10
-    echo "MySQL docker started with id: $containerId"
+    if [ $? -eq 0 ]; then
+        logger "info" "MySQL Docker container started with id: $containerId."
+        logger "info" "Waiting 10s for MySQL Docker container to start...."
+        sleep 10
+    else
+        logger "error" "Failed to start MySQL Docker container."
+    fi
     
     # Check if the MySQL container is running
     if docker ps | grep "$CONTAINER_NAME" &>/dev/null; then
@@ -17,27 +25,36 @@ setup_mysql() {
             "GRANT ALL PRIVILEGES ON $CONTAINER_NAME.* TO '$MYSQL_USER'@'localhost';"
         "FLUSH PRIVILEGES;")
         
+        logger "info" "Creating MySQL user and database...."
+        
         for query in "${QUERIES[@]}";
         do
-            docker exec -it $CONTAINER_NAME mysql -u root -p"$MYSQL_ROOT_PASSWORD" -e "$query"
+            docker exec -it $CONTAINER_NAME mysql -u root -p"$MYSQL_ROOT_PASSWORD" -e "$query" &>/dev/null;
+            
         done
         
-        echo "MySQL user -> '$MYSQL_USER' created succesfully."
-        echo "MySQL database -> '$CONTAINER_NAME' created succesfully."
+        logger "info" "MySQL user -> '$MYSQL_USER' created succesfully."
+        logger "info" "MySQL database -> '$CONTAINER_NAME' created succesfully."
         
     else
-        exit "MySQL container is not running."
+        logger "error" "MySQL container is not running."
+        exit 1
     fi
 }
 
-
 setup_postgresql() {
-    echo "Starting PostgreSQL Docker container...."
+    logger "info" "Starting PostgreSQL Docker container...."
     
     containerId=$(docker run -d --name $CONTAINER_NAME -p $POSTGRESQL_HOST:$POSTGRESQL_PORT:5432 -e POSTGRES_PASSWORD=$POSTGRESQL_PASSWORD postgres:latest)
     
-    sleep 10
-    echo "PostgreSQL Docker container started with id: $containerId"
+    if [ $? -eq 0 ]; then
+        logger "info" "PostgreSQL Docker container started with id: $containerId."
+        logger "info" "Waiting 10s for PostgreSQL Docker container to start...."
+        sleep 10
+    else
+        logger "error" "Failed to start PostgreSQL Docker container."
+        exit 1
+    fi
     
     # Check if the PostgreSQL container is running
     if docker ps | grep "$CONTAINER_NAME" &>/dev/null; then
@@ -50,19 +67,20 @@ setup_postgresql() {
             "GRANT CREATE, TEMP, CONNECT ON DATABASE $CONTAINER_NAME TO $POSTGRESQL_USER;"
         )
         
+        logger "info" "Creating PostgreSQL user and database...."
         
         for query in "${QUERIES[@]}"; do
-            docker exec -it $CONTAINER_NAME psql -U postgres -c "$query"
+            docker exec -it $CONTAINER_NAME psql -U postgres -c "$query" &>/dev/null;
         done
         
         # Grant for public
-        docker exec -it $CONTAINER_NAME psql -U postgres $CONTAINER_NAME -c "GRANT ALL ON SCHEMA public TO $POSTGRESQL_USER;"
+        docker exec -it $CONTAINER_NAME psql -U postgres $CONTAINER_NAME -c "GRANT ALL ON SCHEMA public TO $POSTGRESQL_USER;" &>/dev/null;
         
-        echo "PostgreSQL user -> '$POSTGRESQL_USER' created successfully."
-        echo "PostgreSQL database -> '$CONTAINER_NAME' created successfully."
+        logger "info" "PostgreSQL user -> '$POSTGRESQL_USER' created successfully."
+        logger "info" "PostgreSQL database -> '$CONTAINER_NAME' created successfully."
         
     else
-        echo "PostgreSQL container is not running."
+        logger "error" "PostgreSQL container is not running."
         exit 1
     fi
 }
@@ -92,11 +110,19 @@ check_docker() {
             setup_scylla
         fi
     else
-        echo "Docker is not installed."
+        logger "error" "Docker is not installed."
         exit 1
     fi
 }
 
+
+# Activate the virtual environment
+if source "venv_$CONTAINER_NAME/bin/activate"; then
+    logger "info" "Virtual environment activated successfully."
+else
+    echo "Failed to activate the virtual environment 'venv_$CONTAINER_NAME'."
+    exit 1
+fi
 
 check_docker
 

@@ -5,6 +5,69 @@ import os
 from time import sleep
 from typing import Union
 from const import *
+import logging
+import colorlog
+
+
+class Logger:
+    def __init__(self, logFileName='script.log', logLevel=logging.INFO):
+        """
+        Initialize the ColoredLogger.
+
+        Args:
+            log_file_name (str): The name of the log file. Default is "script.log".
+            log_level (int): The logging level. Default is INFO.
+        """
+        self.logger = logging.getLogger(__name__)
+        self.logger.setLevel(logLevel)
+
+        formatter = colorlog.ColoredFormatter(
+            "%(log_color)s%(asctime)s [%(levelname)s]: %(message)s",
+            log_colors={
+                'INFO': 'green',
+                'WARNING': 'yellow',
+                'ERROR': 'red',
+            },
+            secondary_log_colors={},
+            style='%'
+        )
+
+        console_handler = colorlog.StreamHandler()
+        console_handler.setFormatter(formatter)
+
+        file_handler = logging.FileHandler(logFileName)
+        file_handler.setFormatter(logging.Formatter(
+            "%(asctime)s [%(levelname)s]: %(message)s"))
+
+        self.logger.addHandler(console_handler)
+        self.logger.addHandler(file_handler)
+
+    def log_info(self, message):
+        """
+        Log an informational message.
+
+        Args:
+            message (str): The message to log.
+        """
+        self.logger.info(message)
+
+    def log_warning(self, message):
+        """
+        Log a warning message.
+
+        Args:
+            message (str): The warning message to log.
+        """
+        self.logger.warning(message)
+
+    def log_error(self, message):
+        """
+        Log an error message.
+
+        Args:
+            message (str): The error message to log.
+        """
+        self.logger.error(message)
 
 
 class EditSettings:
@@ -22,6 +85,7 @@ class EditSettings:
         self.settingsPath = settingsPath
         self.dbType = dbType
         self.projectName = projectName
+        self.logger = Logger()
 
     def parse_file(self) -> ast.Module:
         with open(self.settingsPath, 'r') as f:
@@ -34,6 +98,7 @@ class EditSettings:
         unparsedFile = ast.unparse(self.root)
         with open(self.settingsPath, 'w') as f:
             f.write(unparsedFile)
+        self.logger.log_info("Settings.py correctly edited.")
 
     def add_blank_lines(self) -> None:
         """This method will just add blank lines to make the file more readable."""
@@ -56,6 +121,7 @@ class EditSettings:
 
         command = f"yapf -i --style='{YAPF_STYLE}' {self.settingsPath}"
         subprocess.run(command, shell=True, check=True)
+        self.logger.log_info("'settings.py' correctly formatted.")
 
     # In order:
 
@@ -72,6 +138,8 @@ class EditSettings:
 
             self.root.body.insert(1, importNode)
 
+        self.logger.log_info("Added necessary imports.")
+
     def _add_base_dir(self) -> None:
         for node in ast.walk(self.root):
 
@@ -85,6 +153,8 @@ class EditSettings:
                 self.root.body.remove(baseDirNodeToReplace)
                 self.root.body.insert(baseDirNodeIndex, baseDirNode)
 
+        self.logger.log_info("Added BASE_DIR.")
+
     def _add_root_dir(self) -> None:
         for node in ast.walk(self.root):
             if isinstance(node, ast.Assign) and isinstance(node.targets[0], ast.Name) and node.targets[0].id == 'BASE_DIR':
@@ -92,9 +162,9 @@ class EditSettings:
 
         rootDirNode = ast.parse(LITERAL_ROOT_DIR).body[0]
         self.root.body.insert(baseDirNodeIndex + 1, rootDirNode)
+        self.logger.log_info("Added ROOT_DIR.")
 
     def _add_env(self) -> None:
-
         for node in ast.walk(self.root):
             if isinstance(node, ast.Assign) and isinstance(node.targets[0], ast.Name) and node.targets[0].id == 'SECRET_KEY':
                 debugNodeIndex = self.root.body.index(node)
@@ -104,6 +174,7 @@ class EditSettings:
 
         readEnvNode = ast.parse(LITERAL_READ_ENV).body[0]
         self.root.body.insert(debugNodeIndex + 1, readEnvNode)
+        self.logger.log_info("Added ENV and read_env.")
 
     def _add_secret_key(self) -> None:
         def _save_secret_key(secretKey: str) -> None:
@@ -124,6 +195,8 @@ class EditSettings:
                 # self.root.body.remove(secretKeyNodeToReplace)
                 # self.root.body.insert(secretKeyNodeIndex, secretKeyNode)
 
+                self.logger.log_info("Added SECRET_KEY.")
+
     def _add_debug(self) -> None:
         for node in ast.walk(self.root):
 
@@ -136,6 +209,7 @@ class EditSettings:
                 ast.copy_location(debugNode, debugNodeToReplace)
                 self.root.body.remove(debugNodeToReplace)
                 self.root.body.insert(debugNodeIndex, debugNode)
+                self.logger.log_info("Added DEBUG.")
 
     def _add_assets_root(self) -> None:
         def add_inside_env() -> None:
@@ -149,6 +223,7 @@ class EditSettings:
         add_inside_env()
         assetsRootNode = ast.parse(LITERAL_ASSETS_ROOT).body[0]
         self.root.body.insert(debugNodeIndex + 1, assetsRootNode)
+        self.logger.log_info("Added ASSETS_ROOT.")
 
     def _add_allowed_hosts(self) -> None:
         for node in ast.walk(self.root):
@@ -163,6 +238,7 @@ class EditSettings:
                 self.root.body.remove(allowedHostsNodeToReplace)
                 self.root.body.insert(
                     allowedHostsNodeIndex, allowedHostsNode)
+                self.logger.log_info("Added ALLOWED_HOSTS.")
 
     def _add_csrf_trusted(self) -> None:
         for node in ast.walk(self.root):
@@ -171,6 +247,7 @@ class EditSettings:
 
         csrfTrustedNode = ast.parse(LITERAL_CSRF_TRUSTED_ORIGINS).body[0]
         self.root.body.insert(allowedHostsNodeIndex + 1, csrfTrustedNode)
+        self.logger.log_info("Added CSRF_TRUSTED_ORIGINS.")
 
     def _add_installed_apps(self) -> None:
         for node in ast.walk(self.root):
@@ -186,6 +263,7 @@ class EditSettings:
                 self.root.body.remove(installedAppsNodeToReplace)
                 self.root.body.insert(
                     installedAppsNodeIndex, installedAppsNode)
+                self.logger.log_info("Added INSTALLED_APPS.")
 
     def _add_middleware(self) -> None:
         for node in ast.walk(self.root):
@@ -201,6 +279,7 @@ class EditSettings:
                 self.root.body.remove(middlewareNodeToReplace)
                 self.root.body.insert(
                     middlewaresNodeIndex, middlewareNode)
+                self.logger.log_info("Added MIDDLEWARE.")
 
     def _add_template_dir(self) -> None:
         for node in ast.walk(self.root):
@@ -209,6 +288,7 @@ class EditSettings:
 
         templateDirNode = ast.parse(LITERAL_TEMPLATE_DIR).body[0]
         self.root.body.insert(rootUrlIndex + 1, templateDirNode)
+        self.logger.log_info("Added TEMPLATE_DIR.")
 
     def _add_templates(self) -> None:
         for node in ast.walk(self.root):
@@ -224,6 +304,7 @@ class EditSettings:
                 self.root.body.remove(templatesNodeToReplace)
                 self.root.body.insert(
                     templatesNodeIndex, templatesNode)
+                self.logger.log_info("Added TEMPLATES.")
 
     def _add_database(self) -> None:
         """
@@ -233,7 +314,7 @@ class EditSettings:
 
         if self.dbType == "mysql":
             # If it creates the db, and the user with grant
-            if setup_mysql(self.projectName):
+            if setup_mysql(self.projectName, self.logger):
                 for node in ast.walk(self.root):
                     if isinstance(node, ast.Assign) and isinstance(node.targets[0], ast.Name) and node.targets[0].id == 'DATABASES':
                         databasesToReplace = node
@@ -244,12 +325,12 @@ class EditSettings:
                 ast.copy_location(databasesNode, databasesToReplace)
                 self.root.body.remove(databasesToReplace)
                 self.root.body.insert(databasesIndex, databasesNode)
+                self.logger.log_info("Added DATABASES (MySQL).")
             else:
-                print(
-                    f"Couldn't create the Database or the docker")
+                self.logger.log_error("Couldn't create the MySQL database.")
 
         elif self.dbType == "postgre":
-            if setup_postgre(self.projectName):
+            if setup_postgre(self.projectName, self.logger):
                 for node in ast.walk(self.root):
                     if isinstance(node, ast.Assign) and isinstance(node.targets[0], ast.Name) and node.targets[0].id == 'DATABASES':
                         databasesToReplace = node
@@ -260,9 +341,10 @@ class EditSettings:
                 ast.copy_location(databasesNode, databasesToReplace)
                 self.root.body.remove(databasesToReplace)
                 self.root.body.insert(databasesIndex, databasesNode)
+                self.logger.log_info("Added DATABASES (PostgreSQL).")
             else:
-                print(
-                    f"Couldn't create the Database or the docker")
+                self.logger.log_error(
+                    "Couldn't create the PostgreSQL database.")
 
     def _add_static_root(self) -> None:
         for node in ast.walk(self.root):
@@ -272,6 +354,7 @@ class EditSettings:
 
                 staticRootNode = ast.parse(LITERAL_STATIC_ROOT).body[0]
                 self.root.body.insert(staticUrlNodeIndex, staticRootNode)
+                self.logger.log_info("Added STATIC_ROOT.")
 
     def _add_static_files_dirs(self) -> None:
         for node in ast.walk(self.root):
@@ -283,10 +366,11 @@ class EditSettings:
                     LITERAL_STATICFILES_DIRS).body[0]
                 self.root.body.insert(
                     staticFilesDirIndex + 1, staticFilesDirNode)
+                self.logger.log_info("Added STATICFILES_DIRS.")
 
     def _add_comments(self):
-        """Add comments in settings.py"""
-        raise NotImplementedError
+        """This method will use AST to add comments to the settings.py file."""
+        return NotImplementedError
 
     # Start:
     def edit(self):
@@ -294,12 +378,28 @@ class EditSettings:
         Edit the settings.py file by performing various modifications and formatting.
         This method performs the following operations:
 
-        1. Parses the settings.py file into an Abstract Syntax Tree (AST).
-        2. Edits the database configuration if a specific database type (dbType) is provided.
-        3. Adds necessary imports to the settings.py file.
-        4. Saves the modified AST back to the settings.py file.
-        5. Adds blank lines between sections for improved readability.
-        6. Formats the settings.py file for consistent code style using a code formatter.
+        1. Parse the settings.py file.
+        2. Add necessary imports.
+        3. Add the BASE_DIR contant to the settings.py
+        4. Add the ROOT_DIR constant to the settings.py
+        5. Add the ENV constant to the settings.py
+        6. Add the SECRET_KEY constant to the settings.py
+        7. Add the DEBUG constant to the settings.py
+        8. Add the ASSETS_ROOT constant to the settings.py
+        9. Add the ALLOWED_HOSTS constant to the settings.py
+        10. Add the CSRF_TRUSTED_ORIGINS constant to the settings.py
+        11. Add the INSTALLED_APPS constant to the settings.py
+        12. Add the MIDDLEWARE constant to the settings.py
+        13. Add the TEMPLATE_DIR constant to the settings.py
+        14. Add the TEMPLATES constant to the settings.py
+        15. Add the DATABASES constant to the settings.py
+        16. Add the STATIC_ROOT constant to the settings.py
+        17. Add the STATICFILES_DIRS constant to the settings.py
+        18. Save the settings.py file.
+        20. Format the settings.py file with yapf.
+
+        Returns:
+            None
         """
 
         # Parse the settings.py
@@ -323,7 +423,7 @@ class EditSettings:
         self._add_static_root()
         self._add_static_files_dirs()
 
-        setup_extra_dirs()
+        setup_extra_dirs(self.logger)
 
         # Save file and make other edits after it
         self.unparse_and_save_file()
@@ -331,7 +431,8 @@ class EditSettings:
         self.add_blank_lines()
         self.format_file()
 
-def setup_extra_dirs() -> None:
+
+def setup_extra_dirs(logger: Logger) -> None:
     """
     Create necessary directories and files for the project's static, assets and templates.
 
@@ -367,13 +468,16 @@ def setup_extra_dirs() -> None:
     os.makedirs('apps/static/assets/js',  exist_ok=True)
     os.makedirs('apps/static/assets/img',  exist_ok=True)
 
+    logger.log_info("Created necessary directories and files.")
 
-def setup_mysql(projectName: str) -> bool:
+
+def setup_mysql(projectName: str, logger: Logger) -> bool:
     """
     This function installs MySQL, sets up MySQL, creates a user with privileges, creates a database, and saves the credentials to the '.env' file. 
 
     Args:
         projectName (str): Project name
+        logger (Logger): Logger instance
 
     Returns:
         bool: True if docker started, user created with grant and saved credentials in the 
@@ -400,6 +504,7 @@ def setup_mysql(projectName: str) -> bool:
             env.write(f"MYSQL_USER='{MYSQL_USER}'\n")
             env.write(f"MYSQL_PASSWORD='{MYSQL_PASSWORD}'\n")
             env.write(f"MYSQL_ROOT_PASSWORD='{MYSQL_ROOT_PASSWORD}'\n\n")
+            logger.log_info("Added MySQL credentials to '.env'.")
 
         return True
 
@@ -408,12 +513,13 @@ def setup_mysql(projectName: str) -> bool:
         return False
 
 
-def setup_postgre(projectName: str) -> bool:
+def setup_postgre(projectName: str, logger: Logger) -> bool:
     """
     This function installs MySQL, sets up MySQL, creates a user with privileges, creates a database, and saves the credentials to the '.env' file. 
 
     Args:
         projectName (str): Project name
+        logger (Logger): Logger instance
 
     Returns:
         bool: True if docker started, user created with grant and saved credentials in the 
@@ -441,6 +547,7 @@ def setup_postgre(projectName: str) -> bool:
             env.write(f"POSTGRESQL_PASSWORD='{POSTGRESQL_PASSWORD}'\n")
             env.write(
                 f"POSTGRESQL_ROOT_PASSWORD='{POSTGRESQL_ROOT_PASSWORD}'\n\n")
+            logger.log_info("Added PostgreSQL credentials to '.env'.")
 
         return True
 
