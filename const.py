@@ -51,6 +51,7 @@ LITERAL_STATIC_ROOT = "STATIC_ROOT = os.path.join(ROOT_DIR, 'staticfiles')"
 LITERAL_STATICFILES_DIRS = "STATICFILES_DIRS = (os.path.join(ROOT_DIR, 'apps/static'))"
 
 # SMTP literals:
+EMAIL_BACKEND = "EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'"
 EMAIL_HOST = "EMAIL_HOST = os.getenv('EMAIL_HOST')"
 EMAIL_USE_TLS = "EMAIL_USE_TLS = os.getenv('EMAIL_USE_TLS')"
 EMAIL_PORT = "EMAIL_PORT = os.getenv('EMAIL_PORT')"

@@ -388,6 +388,7 @@ class EditSettings:
                 env.write(f"EMAIL_HOST_USER=''\n")
                 env.write(f"EMAIL_HOST_PASSWORD=''\n\n")
 
+        smtpBackend = ast.parse(EMAIL_BACKEND).body[0]
         smtpHost = ast.parse(EMAIL_HOST).body[0]
         smtpUseTls = ast.parse(EMAIL_USE_TLS).body[0]
         smtpPort = ast.parse(EMAIL_PORT).body[0]
@@ -397,7 +398,7 @@ class EditSettings:
 
         add_inside_env()
 
-        nodesToAdd = [smtpHost, smtpPort, smtpUser,
+        nodesToAdd = [smtpBackend, smtpHost, smtpPort, smtpUser,
                       smtpPassword, smtpUseTls, smtpUseSsl]
 
         self.root.body.extend(nodesToAdd)
