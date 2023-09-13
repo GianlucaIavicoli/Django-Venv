@@ -62,8 +62,8 @@ else
     #exit 1
 fi
 
-# Run the main script
 
+# Run the main script
 python3 script.py root/settings.py mysql $projectName
 
 # Deactivate the virtual environment

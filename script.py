@@ -98,7 +98,7 @@ class EditSettings:
         unparsedFile = ast.unparse(self.root)
         with open(self.settingsPath, 'w') as f:
             f.write(unparsedFile)
-        self.logger.log_info("Settings.py correctly edited.")
+        self.logger.log_info("'settings.py' correctly edited.")
 
     def add_blank_lines(self) -> None:
         """This method will just add blank lines to make the file more readable."""
@@ -198,6 +198,10 @@ class EditSettings:
                 self.logger.log_info("Added SECRET_KEY.")
 
     def _add_debug(self) -> None:
+        def add_inside_env() -> None:
+            with open('.env', 'a') as env:
+                env.write(f"DEBUG=True\n\n")
+
         for node in ast.walk(self.root):
 
             if isinstance(node, ast.Assign) and isinstance(node.targets[0], ast.Name) and node.targets[0].id == 'DEBUG':
@@ -209,6 +213,8 @@ class EditSettings:
                 ast.copy_location(debugNode, debugNodeToReplace)
                 self.root.body.remove(debugNodeToReplace)
                 self.root.body.insert(debugNodeIndex, debugNode)
+                add_inside_env()
+
                 self.logger.log_info("Added DEBUG.")
 
     def _add_assets_root(self) -> None:
@@ -368,6 +374,35 @@ class EditSettings:
                     staticFilesDirIndex + 1, staticFilesDirNode)
                 self.logger.log_info("Added STATICFILES_DIRS.")
 
+    def _add_smtp(self) -> None:
+        """
+        This method will add the SMTP configuration to the settings.py file.
+        """
+        def add_inside_env() -> None:
+            with open('.env', 'a') as env:
+                env.write("# SMTP configuration:\n")
+                env.write(f"EMAIL_HOST=''\n")
+                env.write(f"EMAIL_USE_TLS=''\n")
+                env.write(f"EMAIL_PORT=''\n")
+                env.write(f"EMAIL_USE_SSL=''\n")
+                env.write(f"EMAIL_HOST_USER=''\n")
+                env.write(f"EMAIL_HOST_PASSWORD=''\n\n")
+
+        smtpHost = ast.parse(EMAIL_HOST).body[0]
+        smtpUseTls = ast.parse(EMAIL_USE_TLS).body[0]
+        smtpPort = ast.parse(EMAIL_PORT).body[0]
+        smtpUseSsl = ast.parse(EMAIL_USE_SSL).body[0]
+        smtpUser = ast.parse(EMAIL_HOST_USER).body[0]
+        smtpPassword = ast.parse(EMAIL_HOST_PASSWORD).body[0]
+
+        add_inside_env()
+
+        nodesToAdd = [smtpHost, smtpPort, smtpUser,
+                      smtpPassword, smtpUseTls, smtpUseSsl]
+
+        self.root.body.extend(nodesToAdd)
+        self.logger.log_info("Added SMTP configuration.")
+
     def _add_comments(self):
         """This method will use AST to add comments to the settings.py file."""
         return NotImplementedError
@@ -422,6 +457,8 @@ class EditSettings:
         self._add_database()
         self._add_static_root()
         self._add_static_files_dirs()
+
+        self._add_smtp()
 
         setup_extra_dirs(self.logger)
 
@@ -498,6 +535,7 @@ def setup_mysql(projectName: str, logger: Logger) -> bool:
             command, shell=True, check=True, start_new_session=True, env=envVariables)
 
         with open('.env', 'a') as env:
+            env.write("# MySQL credentials:\n")
             env.write(f"MYSQL_NAME='{projectName}'\n")
             env.write(f"MYSQL_HOST='{MYSQL_HOST}'\n")
             env.write(f"MYSQL_PORT='{MYSQL_PORT}'\n")
@@ -540,6 +578,7 @@ def setup_postgre(projectName: str, logger: Logger) -> bool:
             command, shell=True, check=True, start_new_session=True, env=envVariables)
 
         with open('.env', 'a') as env:
+            env.write("# PostgreSQL credentials:\n")
             env.write(f"POSTGRESQL_NAME='{projectName}'\n")
             env.write(f"POSTGRESQL_HOST='{POSTGRESQL_HOST}'\n")
             env.write(f"POSTGRESQL_PORT='{POSTGRESQL_PORT}'\n")

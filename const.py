@@ -49,3 +49,11 @@ LITERAL_TEMPLATE_DIR = "TEMPLATE_DIR = os.path.join(ROOT_DIR, 'apps/templates')"
 LITERAL_TEMPLATES = "TEMPLATES = [{'BACKEND': 'django.template.backends.django.DjangoTemplates', 'DIRS': [TEMPLATE_DIR], 'APP_DIRS': True, 'OPTIONS': {'context_processors': ['django.template.context_processors.debug','django.template.context_processors.request','django.contrib.auth.context_processors.auth','django.contrib.messages.context_processors.messages']}}]"
 LITERAL_STATIC_ROOT = "STATIC_ROOT = os.path.join(ROOT_DIR, 'staticfiles')"
 LITERAL_STATICFILES_DIRS = "STATICFILES_DIRS = (os.path.join(ROOT_DIR, 'apps/static'))"
+
+# SMTP literals:
+EMAIL_HOST = "EMAIL_HOST = os.getenv('EMAIL_HOST')"
+EMAIL_USE_TLS = "EMAIL_USE_TLS = os.getenv('EMAIL_USE_TLS')"
+EMAIL_PORT = "EMAIL_PORT = os.getenv('EMAIL_PORT')"
+EMAIL_USE_SSL = "EMAIL_USE_SSL = os.getenv('EMAIL_USE_SSL')"
+EMAIL_HOST_USER = "EMAIL_HOST_USER = os.getenv('EMAIL_HOST_USER')"
+EMAIL_HOST_PASSWORD = "EMAIL_HOST_PASSWORD = os.getenv('EMAIL_HOST_PASSWORD')"
