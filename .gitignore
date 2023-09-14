@@ -175,8 +175,6 @@ src/cookies
 venv*
 
 todo
-example.settings.py
-
 root/
 manage.py
 apps/

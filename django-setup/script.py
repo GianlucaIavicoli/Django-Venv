@@ -1,12 +1,13 @@
-import ast
+import ast_comments
 import subprocess
 import sys
 import os
-from time import sleep
 from typing import Union
 from const import *
 import logging
 import colorlog
+import json
+from time import sleep
 
 
 class Logger:
@@ -70,8 +71,8 @@ class Logger:
         self.logger.error(message)
 
 
-class EditSettings:
-    def __init__(self, settingsPath: str, dbType: Union[str, None], projectName: str):
+class EditSettings(Logger):
+    def __init__(self, projectName: str, settingsPath: str, dbType: Union[str, None], databaseDict: dict, htmx: str, smtp: str, logFileName='script.log', logLevel=logging.INFO):
         """
         Class for modifying a Django project's settings.py file.
 
@@ -82,23 +83,36 @@ class EditSettings:
             dbType (Union[str, None]): The type of database to use. It can be one of the following values: mysql, postgre or None.
             projectName (str): Project name
         """
+        super().__init__(logFileName, logLevel)
         self.settingsPath = settingsPath
         self.dbType = dbType
         self.projectName = projectName
-        self.logger = Logger()
 
-    def parse_file(self) -> ast.Module:
+        # Check if the databaseDict is empty
+        for value in databaseDict.values():
+            if value == '':
+                self.databaseDict = None
+                break
+
+            else:
+                self.databaseDict = databaseDict
+                break
+
+        self.htmx = True if htmx == "true" else False
+        self.smtp = True if smtp == "true" else False
+
+    def parse_file(self) -> ast_comments.Module:
         with open(self.settingsPath, 'r') as f:
             fileContent = f.read()
 
         # Parse the settings.py
-        return ast.parse(fileContent)
+        return ast_comments.parse(fileContent)
 
     def unparse_and_save_file(self) -> None:
-        unparsedFile = ast.unparse(self.root)
+        unparsedFile = ast_comments.unparse(self.root)
         with open(self.settingsPath, 'w') as f:
             f.write(unparsedFile)
-        self.logger.log_info("'settings.py' correctly edited.")
+        self.log_info("'settings.py' correctly edited.")
 
     def add_blank_lines(self) -> None:
         """This method will just add blank lines to make the file more readable."""
@@ -121,258 +135,318 @@ class EditSettings:
 
         command = f"yapf -i --style='{YAPF_STYLE}' {self.settingsPath}"
         subprocess.run(command, shell=True, check=True)
-        self.logger.log_info("'settings.py' correctly formatted.")
-
-    # In order:
+        self.log_info("'settings.py' correctly formatted.")
 
     def _add_imports(self) -> None:
 
         # Remove the 'from pathlib import Path' which would be useless.
-        for node in ast.walk(self.root):
-            if isinstance(node, ast.ImportFrom):
+        for node in ast_comments.walk(self.root):
+            if isinstance(node, ast_comments.ImportFrom):
                 self.root.body.remove(node)
 
         for module in MODULES_TO_IMPORT:
-            importNode = ast.Import(
-                names=[ast.alias(name=module, asname=None)])
+            importNode = ast_comments.Import(
+                names=[ast_comments.alias(name=module, asname=None)])
 
             self.root.body.insert(1, importNode)
 
-        self.logger.log_info("Added necessary imports.")
+        self.log_info("Added necessary imports.")
 
     def _add_base_dir(self) -> None:
-        for node in ast.walk(self.root):
+        for node in ast_comments.walk(self.root):
+            if isinstance(node, ast_comments.Comment):
+                if "# Build paths" in node.value:
+                    self.root.body.remove(node)
 
-            if isinstance(node, ast.Assign) and isinstance(node.targets[0], ast.Name) and node.targets[0].id == 'BASE_DIR':
+                elif "# SECURITY WARNING:" in node.value:
+                    self.root.body.remove(node)
+
+        for node in ast_comments.walk(self.root):
+
+            if isinstance(node, ast_comments.Assign) and isinstance(node.targets[0], ast_comments.Name) and node.targets[0].id == 'BASE_DIR':
                 baseDirNodeToReplace = node
                 baseDirNodeIndex = self.root.body.index(node)
 
-                baseDirNode = ast.parse(LITERAL_BASE_DIR).body[0]
+                baseDirNode = ast_comments.parse(LITERAL_BASE_DIR).body[0]
 
-                ast.copy_location(baseDirNode, baseDirNodeToReplace)
+                ast_comments.copy_location(baseDirNode, baseDirNodeToReplace)
                 self.root.body.remove(baseDirNodeToReplace)
                 self.root.body.insert(baseDirNodeIndex, baseDirNode)
 
-        self.logger.log_info("Added BASE_DIR.")
+        self.log_info("Added BASE_DIR.")
 
     def _add_root_dir(self) -> None:
-        for node in ast.walk(self.root):
-            if isinstance(node, ast.Assign) and isinstance(node.targets[0], ast.Name) and node.targets[0].id == 'BASE_DIR':
+        for node in ast_comments.walk(self.root):
+            if isinstance(node, ast_comments.Assign) and isinstance(node.targets[0], ast_comments.Name) and node.targets[0].id == 'BASE_DIR':
                 baseDirNodeIndex = self.root.body.index(node)
 
-        rootDirNode = ast.parse(LITERAL_ROOT_DIR).body[0]
+        rootDirNode = ast_comments.parse(LITERAL_ROOT_DIR).body[0]
         self.root.body.insert(baseDirNodeIndex + 1, rootDirNode)
-        self.logger.log_info("Added ROOT_DIR.")
+        self.log_info("Added ROOT_DIR.")
 
     def _add_env(self) -> None:
-        for node in ast.walk(self.root):
-            if isinstance(node, ast.Assign) and isinstance(node.targets[0], ast.Name) and node.targets[0].id == 'SECRET_KEY':
+        for node in ast_comments.walk(self.root):
+            if isinstance(node, ast_comments.Assign) and isinstance(node.targets[0], ast_comments.Name) and node.targets[0].id == 'SECRET_KEY':
                 debugNodeIndex = self.root.body.index(node)
 
-        envNode = ast.parse(LITERAL_ENV).body[0]
+        envNode = ast_comments.parse(LITERAL_ENV).body[0]
         self.root.body.insert(debugNodeIndex, envNode)
 
-        readEnvNode = ast.parse(LITERAL_READ_ENV).body[0]
+        readEnvNode = ast_comments.parse(LITERAL_READ_ENV).body[0]
         self.root.body.insert(debugNodeIndex + 1, readEnvNode)
-        self.logger.log_info("Added ENV and read_env.")
+        self.log_info("Added ENV and read_env.")
 
     def _add_secret_key(self) -> None:
         def _save_secret_key(secretKey: str) -> None:
             with open('.env', 'a') as env:
                 env.write(f"DJANGO_SECRET_KEY='{secretKey}'\n\n")
 
-        for node in ast.walk(self.root):
-            if isinstance(node, ast.Assign) and isinstance(node.targets[0], ast.Name) and node.targets[0].id == 'SECRET_KEY':
+        for node in ast_comments.walk(self.root):
+            if isinstance(node, ast_comments.Assign) and isinstance(node.targets[0], ast_comments.Name) and node.targets[0].id == 'SECRET_KEY':
                 secretKeyNodeToReplace = node
                 secretKeyNodeIndex = self.root.body.index(node)
 
-                secretKeyNode = ast.parse(LITERAL_SECRET_KEY).body[0]
+                secretKeyNode = ast_comments.parse(LITERAL_SECRET_KEY).body[0]
                 secretKey = secretKeyNodeToReplace.value.s
 
                 _save_secret_key(secretKey)
 
-                ast.copy_location(secretKeyNode, secretKeyNodeToReplace)
+                ast_comments.copy_location(
+                    secretKeyNode, secretKeyNodeToReplace)
                 # self.root.body.remove(secretKeyNodeToReplace)
                 # self.root.body.insert(secretKeyNodeIndex, secretKeyNode)
 
-                self.logger.log_info("Added SECRET_KEY.")
+                self.log_info("Added SECRET_KEY.")
 
     def _add_debug(self) -> None:
         def add_inside_env() -> None:
             with open('.env', 'a') as env:
                 env.write(f"DEBUG=True\n\n")
 
-        for node in ast.walk(self.root):
+        for node in ast_comments.walk(self.root):
 
-            if isinstance(node, ast.Assign) and isinstance(node.targets[0], ast.Name) and node.targets[0].id == 'DEBUG':
+            if isinstance(node, ast_comments.Assign) and isinstance(node.targets[0], ast_comments.Name) and node.targets[0].id == 'DEBUG':
                 debugNodeToReplace = node
                 debugNodeIndex = self.root.body.index(node)
 
-                debugNode = ast.parse(LITERAL_DEBUG).body[0]
+                debugNode = ast_comments.parse(LITERAL_DEBUG).body[0]
 
-                ast.copy_location(debugNode, debugNodeToReplace)
+                ast_comments.copy_location(debugNode, debugNodeToReplace)
                 self.root.body.remove(debugNodeToReplace)
                 self.root.body.insert(debugNodeIndex, debugNode)
                 add_inside_env()
 
-                self.logger.log_info("Added DEBUG.")
+                self.log_info("Added DEBUG.")
 
     def _add_assets_root(self) -> None:
         def add_inside_env() -> None:
             with open('.env', 'a') as env:
                 env.write(f"ASSETS_ROOT='{DEFAULT_ASSETS_ROOT}'\n\n")
 
-        for node in ast.walk(self.root):
-            if isinstance(node, ast.Assign) and isinstance(node.targets[0], ast.Name) and node.targets[0].id == 'DEBUG':
+        for node in ast_comments.walk(self.root):
+            if isinstance(node, ast_comments.Assign) and isinstance(node.targets[0], ast_comments.Name) and node.targets[0].id == 'DEBUG':
                 debugNodeIndex = self.root.body.index(node)
 
         add_inside_env()
-        assetsRootNode = ast.parse(LITERAL_ASSETS_ROOT).body[0]
+        assetsRootNode = ast_comments.parse(LITERAL_ASSETS_ROOT).body[0]
         self.root.body.insert(debugNodeIndex + 1, assetsRootNode)
-        self.logger.log_info("Added ASSETS_ROOT.")
+        self.log_info("Added ASSETS_ROOT.")
 
     def _add_allowed_hosts(self) -> None:
-        for node in ast.walk(self.root):
+        for node in ast_comments.walk(self.root):
 
-            if isinstance(node, ast.Assign) and isinstance(node.targets[0], ast.Name) and node.targets[0].id == 'ALLOWED_HOSTS':
+            if isinstance(node, ast_comments.Assign) and isinstance(node.targets[0], ast_comments.Name) and node.targets[0].id == 'ALLOWED_HOSTS':
                 allowedHostsNodeToReplace = node
                 allowedHostsNodeIndex = self.root.body.index(node)
 
-                allowedHostsNode = ast.parse(LITERAL_ALLOWED_HOSTS).body[0]
+                allowedHostsNode = ast_comments.parse(
+                    LITERAL_ALLOWED_HOSTS).body[0]
 
-                ast.copy_location(allowedHostsNode, allowedHostsNodeToReplace)
+                ast_comments.copy_location(
+                    allowedHostsNode, allowedHostsNodeToReplace)
                 self.root.body.remove(allowedHostsNodeToReplace)
                 self.root.body.insert(
                     allowedHostsNodeIndex, allowedHostsNode)
-                self.logger.log_info("Added ALLOWED_HOSTS.")
+                self.log_info("Added ALLOWED_HOSTS.")
 
     def _add_csrf_trusted(self) -> None:
-        for node in ast.walk(self.root):
-            if isinstance(node, ast.Assign) and isinstance(node.targets[0], ast.Name) and node.targets[0].id == 'ALLOWED_HOSTS':
+        def add_inside_env() -> None:
+            with open('.env', 'a') as env:
+                env.write(f"SERVER=''\n\n")
+
+        for node in ast_comments.walk(self.root):
+            if isinstance(node, ast_comments.Assign) and isinstance(node.targets[0], ast_comments.Name) and node.targets[0].id == 'ALLOWED_HOSTS':
                 allowedHostsNodeIndex = self.root.body.index(node)
 
-        csrfTrustedNode = ast.parse(LITERAL_CSRF_TRUSTED_ORIGINS).body[0]
+        csrfTrustedNode = ast_comments.parse(
+            LITERAL_CSRF_TRUSTED_ORIGINS).body[0]
         self.root.body.insert(allowedHostsNodeIndex + 1, csrfTrustedNode)
-        self.logger.log_info("Added CSRF_TRUSTED_ORIGINS.")
+        add_inside_env()
+        self.log_info("Added CSRF_TRUSTED_ORIGINS.")
 
     def _add_installed_apps(self) -> None:
-        for node in ast.walk(self.root):
+        for node in ast_comments.walk(self.root):
 
-            if isinstance(node, ast.Assign) and isinstance(node.targets[0], ast.Name) and node.targets[0].id == 'INSTALLED_APPS':
+            if isinstance(node, ast_comments.Assign) and isinstance(node.targets[0], ast_comments.Name) and node.targets[0].id == 'INSTALLED_APPS':
                 installedAppsNodeToReplace = node
                 installedAppsNodeIndex = self.root.body.index(node)
 
-                installedAppsNode = ast.parse(LITERAL_INSTALLED_APPS).body[0]
+                if self.htmx:
+                    installedAppsNode = ast_comments.parse(
+                        LITERAL_INSTALLED_APPS_HTMX).body[0]
+                else:
+                    installedAppsNode = ast_comments.parse(
+                        LITERAL_INSTALLED_APPS).body[0]
 
-                ast.copy_location(installedAppsNode,
-                                  installedAppsNodeToReplace)
+                ast_comments.copy_location(installedAppsNode,
+                                           installedAppsNodeToReplace)
                 self.root.body.remove(installedAppsNodeToReplace)
                 self.root.body.insert(
                     installedAppsNodeIndex, installedAppsNode)
-                self.logger.log_info("Added INSTALLED_APPS.")
+                self.log_info("Added INSTALLED_APPS.")
 
     def _add_middleware(self) -> None:
-        for node in ast.walk(self.root):
+        if self.htmx:
+            for node in ast_comments.walk(self.root):
 
-            if isinstance(node, ast.Assign) and isinstance(node.targets[0], ast.Name) and node.targets[0].id == 'MIDDLEWARE':
-                middlewareNodeToReplace = node
-                middlewaresNodeIndex = self.root.body.index(node)
+                if isinstance(node, ast_comments.Assign) and isinstance(node.targets[0], ast_comments.Name) and node.targets[0].id == 'MIDDLEWARE':
+                    middlewareNodeToReplace = node
+                    middlewaresNodeIndex = self.root.body.index(node)
 
-                middlewareNode = ast.parse(LITERAL_MIDDLEWARE).body[0]
+                    middlewareNode = ast_comments.parse(
+                        LITERAL_MIDDLEWARE).body[0]
 
-                ast.copy_location(middlewareNode,
-                                  middlewareNodeToReplace)
-                self.root.body.remove(middlewareNodeToReplace)
-                self.root.body.insert(
-                    middlewaresNodeIndex, middlewareNode)
-                self.logger.log_info("Added MIDDLEWARE.")
+                    ast_comments.copy_location(middlewareNode,
+                                               middlewareNodeToReplace)
+                    self.root.body.remove(middlewareNodeToReplace)
+                    self.root.body.insert(
+                        middlewaresNodeIndex, middlewareNode)
+                    self.log_info("Added MIDDLEWARE with HTMX.")
 
     def _add_template_dir(self) -> None:
-        for node in ast.walk(self.root):
-            if isinstance(node, ast.Assign) and isinstance(node.targets[0], ast.Name) and node.targets[0].id == 'ROOT_URLCONF':
+        for node in ast_comments.walk(self.root):
+            if isinstance(node, ast_comments.Assign) and isinstance(node.targets[0], ast_comments.Name) and node.targets[0].id == 'ROOT_URLCONF':
                 rootUrlIndex = self.root.body.index(node)
 
-        templateDirNode = ast.parse(LITERAL_TEMPLATE_DIR).body[0]
+        templateDirNode = ast_comments.parse(LITERAL_TEMPLATE_DIR).body[0]
         self.root.body.insert(rootUrlIndex + 1, templateDirNode)
-        self.logger.log_info("Added TEMPLATE_DIR.")
+        self.log_info("Added TEMPLATE_DIR.")
 
     def _add_templates(self) -> None:
-        for node in ast.walk(self.root):
+        for node in ast_comments.walk(self.root):
 
-            if isinstance(node, ast.Assign) and isinstance(node.targets[0], ast.Name) and node.targets[0].id == 'TEMPLATES':
+            if isinstance(node, ast_comments.Assign) and isinstance(node.targets[0], ast_comments.Name) and node.targets[0].id == 'TEMPLATES':
                 templatesNodeToReplace = node
                 templatesNodeIndex = self.root.body.index(node)
 
-                templatesNode = ast.parse(LITERAL_TEMPLATES).body[0]
+                templatesNode = ast_comments.parse(LITERAL_TEMPLATES).body[0]
 
-                ast.copy_location(templatesNode,
-                                  templatesNodeToReplace)
+                ast_comments.copy_location(templatesNode,
+                                           templatesNodeToReplace)
                 self.root.body.remove(templatesNodeToReplace)
                 self.root.body.insert(
                     templatesNodeIndex, templatesNode)
-                self.logger.log_info("Added TEMPLATES.")
+                self.log_info("Added TEMPLATES.")
 
     def _add_database(self) -> None:
         """
         This method modifies the 'DATABASES' dict within the settings.py file to configure database settings
         according to the specified 'dbType'. It supports 'mysql' and 'postgres' database types.
         """
+        def add_inside_env_mysql() -> None:
+            with open('.env', 'a') as env:
+                env.write("# MySQL credentials:\n")
+                env.write(
+                    f"MYSQL_NAME='{self.databaseDict.get('MYSQL_NAME')}'\n")
+                env.write(
+                    f"MYSQL_HOST='{self.databaseDict.get('MYSQL_HOST')}'\n")
+                env.write(
+                    f"MYSQL_PORT='{self.databaseDict.get('MYSQL_PORT')}'\n")
+                env.write(
+                    f"MYSQL_USER='{self.databaseDict.get('MYSQL_USER')}'\n")
+                env.write(
+                    f"MYSQL_PASSWORD='{self.databaseDict.get('MYSQL_PASSWORD')}'\n\n")
+
+        def add_inside_env_postgres() -> None:
+            with open('.env', 'a') as env:
+                env.write("# PostgreSQL credentials:\n")
+                env.write(
+                    f"POSTGRESQL_NAME='{self.databaseDict.get('POSTGRESQL_NAME')}'\n")
+                env.write(
+                    f"POSTGRESQL_HOST='{self.databaseDict.get('POSTGRESQL_HOST')}'\n")
+                env.write(
+                    f"POSTGRESQL_PORT='{self.databaseDict.get('POSTGRESQL_PORT')}'\n")
+                env.write(
+                    f"POSTGRESQL_USER='{self.databaseDict.get('POSTGRESQL_USER')}'\n")
+                env.write(
+                    f"POSTGRESQL_PASSWORD='{self.databaseDict.get('POSTGRESQL_PASSWORD')}'\n\n")
 
         if self.dbType == "mysql":
-            # If it creates the db, and the user with grant
-            if setup_mysql(self.projectName, self.logger):
-                for node in ast.walk(self.root):
-                    if isinstance(node, ast.Assign) and isinstance(node.targets[0], ast.Name) and node.targets[0].id == 'DATABASES':
-                        databasesToReplace = node
-                        databasesIndex = self.root.body.index(node)
+            if self.databaseDict is None:  # If the user didn't specify the database credentials
+                if setup_mysql(self.projectName, self):
+                    for node in ast_comments.walk(self.root):
+                        if isinstance(node, ast_comments.Assign) and isinstance(node.targets[0], ast_comments.Name) and node.targets[0].id == 'DATABASES':
+                            databasesToReplace = node
+                            databasesIndex = self.root.body.index(node)
 
-                databasesNode = ast.parse(LITERAL_MYSQL).body[0]
+                    databasesNode = ast_comments.parse(LITERAL_MYSQL).body[0]
 
-                ast.copy_location(databasesNode, databasesToReplace)
-                self.root.body.remove(databasesToReplace)
-                self.root.body.insert(databasesIndex, databasesNode)
-                self.logger.log_info("Added DATABASES (MySQL).")
+                    ast_comments.copy_location(
+                        databasesNode, databasesToReplace)
+                    self.root.body.remove(databasesToReplace)
+                    self.root.body.insert(databasesIndex, databasesNode)
+                    self.log_info("Added DATABASES (MySQL).")
+                else:
+                    self.log_error("Couldn't create the MySQL database.")
             else:
-                self.logger.log_error("Couldn't create the MySQL database.")
+                add_inside_env_mysql()
+                self.log_info("Added MySQL credentials to '.env'.")
 
         elif self.dbType == "postgre":
-            if setup_postgre(self.projectName, self.logger):
-                for node in ast.walk(self.root):
-                    if isinstance(node, ast.Assign) and isinstance(node.targets[0], ast.Name) and node.targets[0].id == 'DATABASES':
-                        databasesToReplace = node
-                        databasesIndex = self.root.body.index(node)
+            if self.databaseDict is None:  # If the user didn't specify the database credentials
+                if setup_postgre(self.projectName, self):
+                    for node in ast_comments.walk(self.root):
+                        if isinstance(node, ast_comments.Assign) and isinstance(node.targets[0], ast_comments.Name) and node.targets[0].id == 'DATABASES':
+                            databasesToReplace = node
+                            databasesIndex = self.root.body.index(node)
 
-                databasesNode = ast.parse(LITERAL_POSTGRESQL).body[0]
+                    databasesNode = ast_comments.parse(
+                        LITERAL_POSTGRESQL).body[0]
 
-                ast.copy_location(databasesNode, databasesToReplace)
-                self.root.body.remove(databasesToReplace)
-                self.root.body.insert(databasesIndex, databasesNode)
-                self.logger.log_info("Added DATABASES (PostgreSQL).")
+                    ast_comments.copy_location(
+                        databasesNode, databasesToReplace)
+                    self.root.body.remove(databasesToReplace)
+                    self.root.body.insert(databasesIndex, databasesNode)
+                    self.log_info("Added DATABASES (PostgreSQL).")
+                else:
+                    self.log_error(
+                        "Couldn't create the PostgreSQL database.")
             else:
-                self.logger.log_error(
-                    "Couldn't create the PostgreSQL database.")
+                add_inside_env_postgres()
+                self.log_info("Added PostgreSQL credentials to '.env'.")
 
     def _add_static_root(self) -> None:
-        for node in ast.walk(self.root):
+        for node in ast_comments.walk(self.root):
 
-            if isinstance(node, ast.Assign) and isinstance(node.targets[0], ast.Name) and node.targets[0].id == 'STATIC_URL':
+            if isinstance(node, ast_comments.Assign) and isinstance(node.targets[0], ast_comments.Name) and node.targets[0].id == 'STATIC_URL':
                 staticUrlNodeIndex = self.root.body.index(node)
 
-                staticRootNode = ast.parse(LITERAL_STATIC_ROOT).body[0]
+                staticRootNode = ast_comments.parse(
+                    LITERAL_STATIC_ROOT).body[0]
                 self.root.body.insert(staticUrlNodeIndex, staticRootNode)
-                self.logger.log_info("Added STATIC_ROOT.")
+                self.log_info("Added STATIC_ROOT.")
 
     def _add_static_files_dirs(self) -> None:
-        for node in ast.walk(self.root):
+        for node in ast_comments.walk(self.root):
 
-            if isinstance(node, ast.Assign) and isinstance(node.targets[0], ast.Name) and node.targets[0].id == 'STATIC_URL':
+            if isinstance(node, ast_comments.Assign) and isinstance(node.targets[0], ast_comments.Name) and node.targets[0].id == 'STATIC_URL':
                 staticFilesDirIndex = self.root.body.index(node)
 
-                staticFilesDirNode = ast.parse(
+                staticFilesDirNode = ast_comments.parse(
                     LITERAL_STATICFILES_DIRS).body[0]
                 self.root.body.insert(
                     staticFilesDirIndex + 1, staticFilesDirNode)
-                self.logger.log_info("Added STATICFILES_DIRS.")
+                self.log_info("Added STATICFILES_DIRS.")
 
     def _add_smtp(self) -> None:
         """
@@ -388,25 +462,44 @@ class EditSettings:
                 env.write(f"EMAIL_HOST_USER=''\n")
                 env.write(f"EMAIL_HOST_PASSWORD=''\n\n")
 
-        smtpBackend = ast.parse(EMAIL_BACKEND).body[0]
-        smtpHost = ast.parse(EMAIL_HOST).body[0]
-        smtpUseTls = ast.parse(EMAIL_USE_TLS).body[0]
-        smtpPort = ast.parse(EMAIL_PORT).body[0]
-        smtpUseSsl = ast.parse(EMAIL_USE_SSL).body[0]
-        smtpUser = ast.parse(EMAIL_HOST_USER).body[0]
-        smtpPassword = ast.parse(EMAIL_HOST_PASSWORD).body[0]
+        if self.smtp:
+            smtpBackend = ast_comments.parse(EMAIL_BACKEND).body[0]
+            smtpHost = ast_comments.parse(EMAIL_HOST).body[0]
+            smtpUseTls = ast_comments.parse(EMAIL_USE_TLS).body[0]
+            smtpPort = ast_comments.parse(EMAIL_PORT).body[0]
+            smtpUseSsl = ast_comments.parse(EMAIL_USE_SSL).body[0]
+            smtpUser = ast_comments.parse(EMAIL_HOST_USER).body[0]
+            smtpPassword = ast_comments.parse(EMAIL_HOST_PASSWORD).body[0]
 
-        add_inside_env()
+            add_inside_env()
 
-        nodesToAdd = [smtpBackend, smtpHost, smtpPort, smtpUser,
-                      smtpPassword, smtpUseTls, smtpUseSsl]
+            nodesToAdd = [smtpBackend, smtpHost, smtpPort, smtpUser,
+                          smtpPassword, smtpUseTls, smtpUseSsl]
 
-        self.root.body.extend(nodesToAdd)
-        self.logger.log_info("Added SMTP configuration.")
+            self.root.body.extend(nodesToAdd)
+            self.log_info("Added SMTP configuration.")
 
     def _add_comments(self):
-        """This method will use AST to add comments to the settings.py file."""
-        return NotImplementedError
+        """this method will iterate over 'SETTINGS_COMMENTS' and add the 2nd element of each tuple (which is a comment) above the corrispoding setting in the settings.py file."""
+
+        for node in ast_comments.walk(self.root):
+            if isinstance(node, ast_comments.Assign):
+                for comment in SETTINGS_COMMENTS:
+
+                    settingName, commentText = comment
+                    if node.targets[0].id == settingName:
+                        # Create an ast object for the comment
+
+                        comment_node = ast_comments.Comment(
+                            value=commentText, inline=False)
+
+                        index = self.root.body.index(node)
+                        self.root.body.insert(index, comment_node)
+
+                        # index = self.root.body.index(node)
+                        # self.root.body.insert(index, comment_node)
+
+        self.log_info("Added comments in settings.py")
 
     # Start:
     def edit(self):
@@ -458,10 +551,11 @@ class EditSettings:
         self._add_database()
         self._add_static_root()
         self._add_static_files_dirs()
-
         self._add_smtp()
 
-        setup_extra_dirs(self.logger)
+        self._add_comments()
+
+        setup_extra_dirs(self)
 
         # Save file and make other edits after it
         self.unparse_and_save_file()
@@ -531,7 +625,7 @@ def setup_mysql(projectName: str, logger: Logger) -> bool:
             'MYSQL_ROOT_PASSWORD': f"{MYSQL_ROOT_PASSWORD}"
         }
 
-        command = f"./databases.sh"
+        command = f"django-setup/databases.sh"
         subprocess.run(
             command, shell=True, check=True, start_new_session=True, env=envVariables)
 
@@ -574,7 +668,7 @@ def setup_postgre(projectName: str, logger: Logger) -> bool:
             'POSTGRESQL_ROOT_PASSWORD': f"{POSTGRESQL_ROOT_PASSWORD}"
         }
 
-        command = f"./databases.sh"
+        command = f"django-setup/databases.sh"
         subprocess.run(
             command, shell=True, check=True, start_new_session=True, env=envVariables)
 
@@ -597,9 +691,12 @@ def setup_postgre(projectName: str, logger: Logger) -> bool:
 
 
 if __name__ == "__main__":
-    settingsPath = sys.argv[1] if sys.argv[1] else None
-    dbType = sys.argv[2] if sys.argv[2] else None
-    projectName = sys.argv[3] if sys.argv[3] else None
+    projectName = sys.argv[1]
+    settingsPath = sys.argv[2]
+    dbType = sys.argv[3]
+    databaseDict = json.loads(sys.argv[4])
+    htmx = sys.argv[5]
+    smtp = sys.argv[6]
 
-    EditSettings(settingsPath=settingsPath, dbType=dbType,
-                 projectName=projectName).edit()
+    EditSettings(projectName=projectName, settingsPath=settingsPath, dbType=dbType,
+                 databaseDict=databaseDict, htmx=htmx, smtp=smtp).edit()

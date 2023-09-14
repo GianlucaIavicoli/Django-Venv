@@ -1,0 +1,270 @@
+#!/bin/bash
+
+SCRIPT_PATH=$(pwd)
+cd ..
+PROJECT_PATH=$(pwd)
+
+databaseType=""
+projectName=""
+htmx=false
+smtp=false
+
+logger() {
+    python3 $SCRIPT_PATH/logger.py "$1" "$2"
+}
+
+help() {
+    echo "Usage: $0 <project_name> [options]"
+    echo "Options:"
+    echo "  -h, --help                        Display this help message"
+    echo "  -d, --database <database_type>    Specify the database type (required)"
+    echo "                                    Choose between 'mysql' or 'postgre'"
+    echo "  --smtp                            Configure SMTP settings in settings.py"
+    echo "  --htmx                            Configure HTMX settings settings.py"
+    exit 1
+}
+
+
+ask_database() {
+    case "$databaseType" in
+        mysql)
+            read -p "Do you have your own MySQL server? [y/n]: " mysqlServer
+            if [ "$mysqlServer" == "y" ]; then
+                # Ask MySQL-specific questions and store the answers
+                read -p "MySQL Host: " mysqlHost
+                if [ -z "$mysqlHost" ]; then
+                    echo "MySQL Host not provided. Using default value: localhost"
+                    mysqlHost="localhost"
+                fi
+                
+                read -p "MySQL Port: " mysqlPort
+                if [ -z "$mysqlPort" ]; then
+                    echo "MySQL Port not provided. Using default value: 3306"
+                    mysqlPort=3306
+                fi
+                
+                read -p "MySQL Username: " mysqlUsername
+                if [ -z "$mysqlUsername" ]; then
+                    echo "MySQL Username required."
+                    exit 1
+                fi
+                
+                read -s -p "MySQL Password: " mysqlPassword
+                if [ -z "$mysqlPassword" ]; then
+                    echo "MySQL Password required."
+                    exit 1
+                fi
+                
+                read -p "MySQL Database Name: " mysqlName
+                if [ -z "$mysqlName" ]; then
+                    echo "MySQL Database Name required."
+                    exit 1
+                fi
+                
+                elif [ "$mysqlServer" == "n" ]; then
+                echo "We're gonna create a MySQL container for you."
+                echo
+                
+                
+            else
+                echo "We're gonna create a MySQL container for you."
+                echo
+            fi
+        ;;
+        postgre)
+            read -p "Do you have your own PostgreSQL server? [y/n]: " postgreServer
+            if [ "$postgreServer" == "y" ]; then
+                echo "You chose PostgreSQL as your database."
+                # Ask PostgreSQL-specific questions and store the answers
+                read -p "PostgreSQL Host: " postgresHost
+                if [ -z "$postgresHost" ]; then
+                    echo "PostgreSQL Host not provided. Using default value: localhost"
+                    postgresHost="localhost"
+                fi
+                
+                read -p "PostgreSQL Port: " postgresPort
+                if [ -z "$postgresPort" ]; then
+                    echo "PostgreSQL Port not provided. Using default value: 5432"
+                    postgresPort=5432
+                fi
+                
+                read -p "PostgreSQL Username: " postgresUsername
+                if [ -z "$postgresUsername" ]; then
+                    echo "PostgreSQL Username required."
+                    exit 1
+                fi
+                
+                read -s -p "PostgreSQL Password: " postgresPassword
+                if [ -z "$postgresPassword" ]; then
+                    echo "PostgreSQL Password required."
+                    exit 1
+                fi
+                
+                read -p "PostgreSQL Database Name: " postgresName
+                if [ -z "$postgresName" ]; then
+                    echo "PostgreSQL Database Name required."
+                    exit 1
+                fi
+                
+                elif [ "$postgreServer" == "n" ]; then
+                echo "We're gonna create a PostgreSQL container for you."
+                echo
+                
+            else
+                echo "We're gonna create a PostgreSQL container for you."
+                echo
+            fi
+        ;;
+    esac
+}
+
+setup_venv() {
+    projectName="$1"
+    
+    # Create the virtual environment
+    if python3 -m venv "venv_$projectName"; then
+        echo "Virtual environment created successfully."
+    else
+        echo "Failed to create the virtual environment."
+        exit 1
+    fi
+    
+    # Activate the virtual environment
+    if source "venv_$projectName/bin/activate"; then
+        activated=true
+        echo "Virtual environment activated successfully."
+    else
+        echo "Failed to activate the virtual environment 'venv_$projectName'."
+        exit 1
+    fi
+    
+    # Create the environment file
+    if touch .env; then
+        echo "Environment file created successfully."
+    else
+        echo "Failed to create the environment file."
+        exit 1
+    fi
+    
+    # Install the latest version of pip
+    if pip3 install --upgrade pip -q; then
+        echo "Pip upgraded successfully."
+    else
+        echo "Failed to upgrade pip."
+    fi
+    
+    # Install the dependencies
+    if pip3 install -r requirements.txt -q; then
+        logger "info" "Dependencies installed successfully."
+    else
+        echo "Failed to install dependencies."
+        exit 1
+    fi
+}
+
+main() {
+    projectName="$1"
+    databaseType="$2"
+    databaseDict=$3
+    htmx=$4
+    smtp=$5
+    
+    # Check if the Django project was created successfully
+    if django-admin startproject root .; then
+        logger "info" "Django project created successfully."
+    else
+        logger "error" "Failed to create the Django project."
+        #exit 1
+    fi
+    
+    python3 $SCRIPT_PATH/script.py $projectName $PROJECT_PATH/root/settings.py "$databaseType" "$databaseDict" $htmx $smtp
+}
+
+# Check if there are no arguments provided
+if [ $# -eq 0 ]; then
+    echo "Error: Project name is required."
+    help
+fi
+
+while [[ $# -gt 0 ]]; do
+    case "$1" in
+        -d|--database)
+            # Check if there's an argument after the flag
+            if [[ -n $2 && ! $2 =~ ^- ]]; then
+                case "$2" in
+                    mysql|postgre)
+                        databaseType="$2"
+                        if ask_database; then
+                            shift 2
+                        else
+                            exit 1
+                        fi
+                    ;;
+                    *)
+                        help
+                    ;;
+                esac
+            else
+                help
+            fi
+        ;;
+        --htmx)
+            htmx=true
+            shift
+        ;;
+        --smtp)
+            smtp=true
+            shift
+        ;;
+        -h| --help)
+            help
+        ;;
+        --)
+            shift
+            break
+        ;;
+        *)
+            # Assume that the first non-flag argument is the project name
+            if [[ -z $projectName ]]; then
+                projectName="$1"
+                if ! [[ $projectName =~ ^[a-zA-Z0-9_]+$ ]]; then
+                    echo "Error: Project name must be alphanumeric"
+                    help
+                fi
+            else
+                echo "Invalid option: $1"
+                help
+            fi
+            shift
+            
+        ;;
+    esac
+done
+
+
+
+sqliteDict="{\"default\": \"\"}"
+
+mysqlDict="{\"MYSQL_HOST\": \"$mysqlHost\", \"MYSQL_PORT\": \"$mysqlPort\", \"MYSQL_USER\": \"$mysqlUsername\", \"MYSQL_PASSWORD\": \"$mysqlPassword\", \"MYSQL_NAME\": \"$mysqlName\"}"
+
+postgresDict="{\"POSTGRESQL_HOST\": \"$postgresHost\", \"POSTGRESQL_PORT\": \"$postgresPort\", \"POSTGRESQL_USER\": \"$postgresUsername\", \"POSTGRESQL_PASSWORD\": \"$postgresPassword\", \"POSTGRESQL_NAME\": \"$postgresName\"}"
+
+
+setup_venv $projectName
+
+# If no database type is provided, use the default database
+if [ -z "$databaseType" ]; then
+    main $projectName "" "$sqliteDict" $htmx $smtp
+    
+    elif [ "$databaseType" == "mysql" ]; then
+    main $projectName $databaseType "$mysqlDict" $htmx $smtp
+    
+    elif [ "$databaseType" == "postgre" ]; then
+    main $projectName $databaseType "$postgresDict" $htmx $smtp
+fi
+
+# Deactivate the virtual environment
+if [ "$activated" = true ]; then
+    deactivate
+fi
+

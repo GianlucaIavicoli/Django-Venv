@@ -1,7 +1,9 @@
 #!/bin/bash
 
+SCRIPT_PATH=$(cd django-setup && pwd)
+
 logger() {
-    python3 logger.py "$1" "$2"
+    python3 $SCRIPT_PATH/logger.py "$1" "$2"
 }
 
 setup_mysql() {
@@ -114,7 +116,6 @@ check_docker() {
         exit 1
     fi
 }
-
 
 # Activate the virtual environment
 if source "venv_$CONTAINER_NAME/bin/activate"; then

@@ -1,5 +1,4 @@
 asgiref==3.7.2
-astor==0.8.1
 click==8.1.7
 Django==4.2.5
 importlib-metadata==6.8.0
@@ -16,4 +15,5 @@ zipp==3.16.2
 pandas
 environ
 colorlog
+ast-comments
 #psycopg2 # postgres
