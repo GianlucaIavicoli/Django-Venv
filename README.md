@@ -82,7 +82,7 @@ To get started, follow these steps:
 2. Enter the project directory:
 
    ```bash
-   cd Djando-Setup
+   cd Django-Setup
    ```
 
 3. Make the script executable by running the following command in the project directory:
