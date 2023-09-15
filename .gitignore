@@ -178,3 +178,5 @@ todo
 root/
 manage.py
 apps/
+test/
+setup.py

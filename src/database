@@ -1,6 +1,6 @@
 #!/bin/bash
 
-SCRIPT_PATH=$(cd django-setup && pwd)
+SCRIPT_PATH="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 
 logger() {
     python3 $SCRIPT_PATH/logger.py "$1" "$2"
@@ -118,10 +118,10 @@ check_docker() {
 }
 
 # Activate the virtual environment
-if source "venv_$CONTAINER_NAME/bin/activate"; then
+if source "$SCRIPT_PATH/activate"; then
     logger "info" "Virtual environment activated successfully."
 else
-    echo "Failed to activate the virtual environment 'venv_$CONTAINER_NAME'."
+    echo "Failed to activate the virtual environment."
     exit 1
 fi
 

@@ -7,7 +7,7 @@ from const import *
 import logging
 import colorlog
 import json
-from time import sleep
+import shutil
 
 
 class Logger:
@@ -213,8 +213,9 @@ class EditSettings(Logger):
 
                 ast_comments.copy_location(
                     secretKeyNode, secretKeyNodeToReplace)
-                # self.root.body.remove(secretKeyNodeToReplace)
-                # self.root.body.insert(secretKeyNodeIndex, secretKeyNode)
+
+                self.root.body.remove(secretKeyNodeToReplace)
+                self.root.body.insert(secretKeyNodeIndex, secretKeyNode)
 
                 self.log_info("Added SECRET_KEY.")
 
@@ -496,10 +497,14 @@ class EditSettings(Logger):
                         index = self.root.body.index(node)
                         self.root.body.insert(index, comment_node)
 
-                        # index = self.root.body.index(node)
-                        # self.root.body.insert(index, comment_node)
-
         self.log_info("Added comments in settings.py")
+
+    def _add_app(self):
+        command = f"python manage.py startapp home"
+        subprocess.run(command, shell=True, check=True)
+        self.log_info("Created 'home' app.")
+
+        shutil.move("home", "apps/home")
 
     # Start:
     def edit(self):
@@ -552,6 +557,7 @@ class EditSettings(Logger):
         self._add_static_root()
         self._add_static_files_dirs()
         self._add_smtp()
+        self._add_app()
 
         self._add_comments()
 
@@ -625,9 +631,11 @@ def setup_mysql(projectName: str, logger: Logger) -> bool:
             'MYSQL_ROOT_PASSWORD': f"{MYSQL_ROOT_PASSWORD}"
         }
 
-        command = f"django-setup/databases.sh"
+        currentDir = os.path.dirname(__file__)
+        command = f" {currentDir}/database"
+
         subprocess.run(
-            command, shell=True, check=True, start_new_session=True, env=envVariables)
+            command, shell=True, check=True, env=envVariables)
 
         with open('.env', 'a') as env:
             env.write("# MySQL credentials:\n")
@@ -668,7 +676,8 @@ def setup_postgre(projectName: str, logger: Logger) -> bool:
             'POSTGRESQL_ROOT_PASSWORD': f"{POSTGRESQL_ROOT_PASSWORD}"
         }
 
-        command = f"django-setup/databases.sh"
+        currentDir = os.path.dirname(__file__)
+        command = f" {currentDir}/database"
         subprocess.run(
             command, shell=True, check=True, start_new_session=True, env=envVariables)
 

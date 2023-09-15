@@ -1,8 +1,9 @@
 #!/bin/bash
 
-SCRIPT_PATH=$(pwd)
-cd ..
-PROJECT_PATH=$(pwd)
+SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
+
+# Navigate to the parent directory to get the project path
+PROJECT_PATH="$(pwd)"
 
 databaseType=""
 projectName=""
@@ -10,11 +11,11 @@ htmx=false
 smtp=false
 
 logger() {
-    python3 $SCRIPT_PATH/logger.py "$1" "$2"
+    python3 $SCRIPT_DIR/logger.py "$1" "$2"
 }
 
 help() {
-    echo "Usage: $0 <project_name> [options]"
+    echo "Usage: django-setup <project_name> [options]"
     echo "Options:"
     echo "  -h, --help                        Display this help message"
     echo "  -d, --database <database_type>    Specify the database type (required)"
@@ -119,45 +120,11 @@ ask_database() {
 }
 
 setup_venv() {
-    projectName="$1"
-    
-    # Create the virtual environment
-    if python3 -m venv "venv_$projectName"; then
-        echo "Virtual environment created successfully."
-    else
-        echo "Failed to create the virtual environment."
-        exit 1
-    fi
-    
-    # Activate the virtual environment
-    if source "venv_$projectName/bin/activate"; then
-        activated=true
-        echo "Virtual environment activated successfully."
-    else
-        echo "Failed to activate the virtual environment 'venv_$projectName'."
-        exit 1
-    fi
-    
     # Create the environment file
     if touch .env; then
-        echo "Environment file created successfully."
+        logger "info" "Environment file created successfully."
     else
-        echo "Failed to create the environment file."
-        exit 1
-    fi
-    
-    # Install the latest version of pip
-    if pip3 install --upgrade pip -q; then
-        echo "Pip upgraded successfully."
-    else
-        echo "Failed to upgrade pip."
-    fi
-    
-    # Install the dependencies
-    if pip3 install -r requirements.txt -q; then
-        logger "info" "Dependencies installed successfully."
-    else
-        echo "Failed to install dependencies."
+        logger "error" "Failed to create the environment file."
         exit 1
     fi
 }
@@ -177,7 +144,7 @@ main() {
         #exit 1
     fi
     
-    python3 $SCRIPT_PATH/script.py $projectName $PROJECT_PATH/root/settings.py "$databaseType" "$databaseDict" $htmx $smtp
+    python3 $SCRIPT_DIR/script.py $projectName $PROJECT_PATH/root/settings.py "$databaseType" "$databaseDict" $htmx $smtp
 }
 
 # Check if there are no arguments provided
@@ -262,9 +229,3 @@ if [ -z "$databaseType" ]; then
     elif [ "$databaseType" == "postgre" ]; then
     main $projectName $databaseType "$postgresDict" $htmx $smtp
 fi
-
-# Deactivate the virtual environment
-if [ "$activated" = true ]; then
-    deactivate
-fi
-

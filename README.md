@@ -34,7 +34,7 @@ This repository contains a set of Python and Bash scripts designed to simplify t
 
 
 ## Features
-Djando-Setup provides the following features:
+Django-Setup provides the following features:
 
 1. **Virtual Environment Setup**: Automatically creates a virtual environment and installs project dependencies.
 
@@ -62,11 +62,11 @@ Djando-Setup provides the following features:
 
 Before you begin, please ensure that you have the following dependencies installed on your system:
 
-- **Linux Operating System**: Djando-Setup is designed to work on Linux-based systems.
+- **Linux Operating System**: Django-Setup is designed to work on Linux-based systems.
 
-- **Docker**: Djando-Setup relies on Docker for certain functionality. Make sure you have Docker installed on your machine. You can find installation instructions for Docker on the [Docker website](https://docs.docker.com/get-docker/).
+- **Docker**: Django-Setup relies on Docker for certain functionality. Make sure you have Docker installed on your machine. You can find installation instructions for Docker on the [Docker website](https://docs.docker.com/get-docker/).
 
-Once you have these dependencies in place, you can proceed with the installation and usage of Djando-Setup.
+Once you have these dependencies in place, you can proceed with the installation and usage of Django-Setup.
 <p align="right">(<a href="#django-setup">back to top</a>)</p>
 
 
@@ -82,7 +82,7 @@ To get started, follow these steps:
 2. Enter the project directory:
 
    ```bash
-   cd Djando-Setup
+   cd Django-Setup
    ```
 
 3. Make the script executable by running the following command in the project directory:
