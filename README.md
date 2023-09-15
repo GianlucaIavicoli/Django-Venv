@@ -1,4 +1,4 @@
-# Django Setup
+# Django Venv
 
 This repository contains a set of Python and Bash scripts designed to simplify the process of setting up a development environment for Django projects. Whether you are a seasoned Django developer or just starting out, these scripts aim to streamline common tasks and make it easier to get your Django project up and running quickly.
 
@@ -8,7 +8,7 @@ This repository contains a set of Python and Bash scripts designed to simplify t
 
 <ol>
   <li>
-    <a href="#django-setup">About The Project</a>
+    <a href="#django-venv">About The Project</a>
     <ul>
       <li><a href="#features">Features</a></li>
       <li><a href="#built-with">Built With</a></li>
@@ -34,7 +34,7 @@ This repository contains a set of Python and Bash scripts designed to simplify t
 
 
 ## Features
-Django-Setup provides the following features:
+Django-Venv provides the following features:
 
 1. **Virtual Environment Setup**: Automatically creates a virtual environment and installs project dependencies.
 
@@ -53,7 +53,7 @@ Django-Setup provides the following features:
 ![MySQL](https://img.shields.io/badge/mysql-%2300f.svg?style=for-the-badge&logo=mysql&logoColor=white)
 ![Postgres](https://img.shields.io/badge/postgres-%23316192.svg?style=for-the-badge&logo=postgresql&logoColor=white)
 <!--![ApacheCassandra](https://img.shields.io/badge/cassandra-%231287B1.svg?style=for-the-badge&logo=apache-cassandra&logoColor=white)-->
-<p align="right">(<a href="#django-setup">back to top</a>)</p>
+<p align="right">(<a href="#django-venv">back to top</a>)</p>
 
 
 ## Getting Started 
@@ -62,45 +62,45 @@ Django-Setup provides the following features:
 
 Before you begin, please ensure that you have the following dependencies installed on your system:
 
-- **Linux Operating System**: Django-Setup is designed to work on Linux-based systems.
+- **Linux Operating System**: Django-Venv is designed to work on Linux-based systems.
 
-- **Docker**: Django-Setup relies on Docker for certain functionality. Make sure you have Docker installed on your machine. You can find installation instructions for Docker on the [Docker website](https://docs.docker.com/get-docker/).
+- **Docker**: Django-Venv relies on Docker for certain functionality. Make sure you have Docker installed on your machine. You can find installation instructions for Docker on the [Docker website](https://docs.docker.com/get-docker/).
 
-Once you have these dependencies in place, you can proceed with the installation and usage of Django-Setup.
-<p align="right">(<a href="#django-setup">back to top</a>)</p>
+Once you have these dependencies in place, you can proceed with the installation and usage of Django-Venv.
+<p align="right">(<a href="#django-venv">back to top</a>)</p>
 
 
 ### Installation
 To get started, follow these steps:
 
-1. Clone the repository to your local machine:
+1. Create a python venv:
 
    ```bash
-   git clone https://github.com/GianlucaIavicoli/Django-Setup.git
+    python -m venv <venv_name>
    ```
 
-2. Enter the project directory:
+2. Activate the venv:
 
    ```bash
-   cd Django-Setup
+    source <venv_name>/bin/activate
    ```
 
-3. Make the script executable by running the following command in the project directory:
+3. Install the package:
 
    ```bash
-   chmod +x script.sh databases.sh
+   pip install django-venv
    ```
 
 ### Usage
 Run the script to set up your Django project:
 
    ```bash
-   ./script.sh <project_name>
+   django-venv <project_name>
    ```
 
 ### Command-Line Options
 ```bash
-./script.sh <project_name> [OPTIONS]
+django-venv <project_name> [OPTIONS]
 
 Options:
     -h, --help                       Display this help message
@@ -109,39 +109,39 @@ Options:
     --smtp                           Configure SMTP settings in settings.py
     --htmx                           Configure HTMX settings in settings.py
 ```
-<p align="right">(<a href="#django-setup">back to top</a>)</p>
+<p align="right">(<a href="#django-venv">back to top</a>)</p>
 
 ### Usage Example
    ```bash
-   ./script.sh <project_name> -d mysql --htmx --smtp
+   django-venv <project_name> -d mysql --htmx --smtp
    ```
   This will generate [settings.py](./example.settings.py), an '.env' file with all the credentials, a locally running MySQL Docker container if the database is not specified, as well as all the static directories and application directories for the Django project.
 
-<p align="right">(<a href="#django-setup">back to top</a>)</p>
+<p align="right">(<a href="#django-venv">back to top</a>)</p>
 
 ## Upcoming Features
 
 1. **Cassandra Support with Docker**: Integrate support for Cassandra databases with Docker.
 2. **Scylla Support with Docker**: Extend our Docker support to include Scylla, a highly available NoSQL database compatible with Apache Cassandra. 
-<p align="right">(<a href="#django-setup">back to top</a>)</p>
+<p align="right">(<a href="#django-venv">back to top</a>)</p>
 
 ## Code of Conduct
 
-Please review our [Code of Conduct](./CODE_OF_CONDUCT.md) before contributing to Django-Setup.
-<p align="right">(<a href="#django-setup">back to top</a>)</p>
+Please review our [Code of Conduct](./CODE_OF_CONDUCT.md) before contributing to Django-Venv.
+<p align="right">(<a href="#django-venv">back to top</a>)</p>
 
 ## Contributing
 
 We welcome contributions from the community! Please see our [Contributing Guidelines](./CONTRIBUTING.md) for more information.
-<p align="right">(<a href="#django-setup">back to top</a>)</p>
+<p align="right">(<a href="#django-venv">back to top</a>)</p>
 
 ## License
 Distributed under the Apache-2.0 license. See LICENSE for more information.
-<p align="right">(<a href="#django-setup">back to top</a>)</p>
+<p align="right">(<a href="#django-venv">back to top</a>)</p>
 
 ## Acknowledgments
 
 * [Yapf Python formatter](https://github.com/google/yapf)
 * [ast-comments](https://github.com/t3rn0/ast-comments)
 
-<p align="right">(<a href="#django-setup">back to top</a>)</p>
+<p align="right">(<a href="#django-venv">back to top</a>)</p>

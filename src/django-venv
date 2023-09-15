@@ -15,7 +15,7 @@ logger() {
 }
 
 help() {
-    echo "Usage: django-setup <project_name> [options]"
+    echo "Usage: django-venv <project_name> [options]"
     echo "Options:"
     echo "  -h, --help                        Display this help message"
     echo "  -d, --database <database_type>    Specify the database type (required)"
